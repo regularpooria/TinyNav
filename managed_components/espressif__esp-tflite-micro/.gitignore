@@ -1,0 +1,13 @@
+build
+managed_components
+sdkconfig
+sdkconfig.old
+dependencies.lock
+*.old
+*.o
+*.s
+.DS_Store
+*.orig
+*.swp
+*.out
+*.lock

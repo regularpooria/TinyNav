@@ -1,0 +1,2 @@
+source /home/regularpooria/Projects/tinynav/build/bootloader/gdbinit/symbols
+source /home/regularpooria/Projects/tinynav/build/bootloader/gdbinit/connect
