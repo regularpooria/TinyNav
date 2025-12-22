@@ -1,4 +1,0 @@
--specs=picolibc.specs
--mabi=ilp32f
--march=rv32imafc_zicsr_zifencei_zaamo_zalrsc_xesploop_xespv2p1
--mtune=esp-base
