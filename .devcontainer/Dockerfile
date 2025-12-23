@@ -1,4 +1,4 @@
-FROM espressif/idf:release-v5.2
+FROM espressif/idf:release-v6.0
 
 ARG DEBIAN_FRONTEND=nointeractive
 ARG CONTAINER_USER=esp
