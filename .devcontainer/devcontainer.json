@@ -16,12 +16,12 @@
 		"settings": {
 		  "terminal.integrated.defaultProfile.linux": "bash",
 		  "idf.espIdfPath": "/opt/esp/idf",
-		  "idf.pythonBinPath": "/opt/esp/python_env/idf5.2_py3.10_env/bin/python",
+		  "idf.pythonBinPath": "/opt/esp/python_env/idf6.0_py3.12_env/bin/python",
 		  "idf.toolsPath": "/opt/esp",
-		  "idf.customExtraPaths": "/opt/esp/tools/xtensa-esp-elf-gdb/12.1_20221002/xtensa-esp-elf-gdb/bin:/opt/esp/tools/riscv32-esp-elf-gdb/12.1_20221002/riscv32-esp-elf-gdb/bin:/opt/esp/tools/xtensa-esp-elf/esp-13.2.0_20230928/xtensa-esp-elf/bin:/opt/esp/tools/riscv32-esp-elf/esp-13.2.0_20230928/riscv32-esp-elf/bin:/opt/esp/tools/esp32ulp-elf/2.35_20220830/esp32ulp-elf/bin:/opt/esp/tools/openocd-esp32/v0.12.0-esp32-20230921/openocd-esp32/bin:/opt/esp/tools/esp-rom-elfs/20230320",
+		  "idf.customExtraPaths": "/opt/esp/tools/xtensa-esp-elf-gdb/16.3_20250913/xtensa-esp-elf-gdb/bin:/opt/esp/tools/riscv32-esp-elf-gdb/16.3_20250913/riscv32-esp-elf-gdb/bin:/opt/esp/tools/xtensa-esp-elf/esp-15.2.0_20251204/xtensa-esp-elf/bin:/opt/esp/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/bin:/opt/esp/tools/esp32ulp-elf/2.38_20240113/esp32ulp-elf/bin:/opt/esp/tools/openocd-esp32/v0.12.0-esp32-20250707/openocd-esp32/bin:/opt/esp/tools/esp-rom-elfs/20241011/",
 		  "idf.customExtraVars": {
-			"OPENOCD_SCRIPTS": "/opt/esp/tools/openocd-esp32/v0.12.0-esp32-20230921/openocd-esp32/share/openocd/scripts",
-			"ESP_ROM_ELF_DIR": "/opt/esp/tools/esp-rom-elfs/20230320/"
+			"OPENOCD_SCRIPTS": "/opt/esp/tools/openocd-esp32/v0.12.0-esp32-20250707/openocd-esp32/share/openocd/scripts",
+			"ESP_ROM_ELF_DIR": "/opt/esp/tools/esp-rom-elfs/20241011/"
 		  },
 		  "idf.gitPath": "/usr/bin/git",
 		  "clang-format.executable": "/usr/bin/clang-format",
