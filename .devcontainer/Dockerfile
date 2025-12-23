@@ -31,10 +31,15 @@ ENV QEMU_URL=https://github.com/espressif/qemu/releases/download/${QEMU_REL}/${Q
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 
-RUN wget --no-verbose ${QEMU_URL} \
+RUN curl -L \
+    --retry 5 \
+    --retry-delay 5 \
+    --retry-connrefused \
+    -o ${QEMU_DIST} ${QEMU_URL} \
   && echo "${QEMU_SHA256} *${QEMU_DIST}" | sha256sum --check --strict - \
-  && tar -xf $QEMU_DIST -C /opt \
+  && tar -xf ${QEMU_DIST} -C /opt \
   && rm ${QEMU_DIST}
+
 
 ENV PATH=/opt/qemu/bin:${PATH}
 
