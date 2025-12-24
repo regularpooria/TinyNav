@@ -1,7 +1,11 @@
 {
-  "idf.openOcdConfigs": ["board/esp32p4-builtin.cfg"],
+  "idf.openOcdConfigs": [
+    "board/esp32p4-builtin.cfg"
+  ],
   "idf.flashType": "UART",
   "idf.customExtraVars": {
+    "OPENOCD_SCRIPTS": "/opt/esp/tools/openocd-esp32/v0.12.0-esp32-20250707/openocd-esp32/share/openocd/scripts",
+    "ESP_ROM_ELF_DIR": "/opt/esp/tools/esp-rom-elfs/20241011/",
     "IDF_TARGET": "esp32p4"
   },
   "clangd.path": "/home/regularpooria/.espressif/tools/esp-clang/esp-20.1.1_20250829/esp-clang/bin/clangd",
