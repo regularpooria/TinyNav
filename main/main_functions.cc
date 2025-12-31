@@ -23,6 +23,14 @@ limitations under the License.
 #include "constants.h"
 #include "output_handler.h"
 
+#include "drive_system/drive_system.h"
+
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
+
+// LED‌ stuff
+#include <WS2812FX.h>
+
 // Globals, used for compatibility with Arduino-style sketches.
 namespace
 {
@@ -34,11 +42,19 @@ namespace
 
   constexpr int kTensorArenaSize = 2000;
   uint8_t tensor_arena[kTensorArenaSize];
+
+  const int NUM_LEDS = 8;
+  const int LED_GPIO = 50;
+  led_strip_handle_t led_strip = nullptr;
+  WS2812FX *fx = nullptr;
+
 } // namespace
 
 // The name of this function is important for Arduino compatibility.
 void setup()
 {
+  drive_system_setup();
+  setup_leds();
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
   model = tflite::GetModel(g_model);
@@ -77,9 +93,7 @@ void setup()
   // Keep track of how many inferences we have performed.
   inference_count = 0;
 }
-
-// The name of this function is important for Arduino compatibility.
-void loop()
+void run_inference()
 {
   // Calculate an x value to feed into the model. We compare the current
   // inference_count to the number of inferences per cycle to determine
@@ -117,4 +131,45 @@ void loop()
   inference_count += 1;
   if (inference_count >= kInferencesPerCycle)
     inference_count = 0;
+}
+
+void setup_leds()
+{
+  led_strip_config_t strip_config = {
+      .strip_gpio_num = LED_GPIO,
+      .max_leds = NUM_LEDS,
+      .led_model = LED_MODEL_WS2812,
+      .color_component_format = LED_STRIP_COLOR_COMPONENT_FMT_GRB,
+      .flags = {
+          .invert_out = false,
+      }};
+
+  led_strip_rmt_config_t rmt_config = {
+      .clk_src = RMT_CLK_SRC_DEFAULT,
+      .resolution_hz = 10 * 1000 * 1000,
+      .mem_block_symbols = 0, // Let the driver choose
+      .flags = {
+          .with_dma = false,
+      }};
+
+  ESP_ERROR_CHECK(led_strip_new_rmt_device(&strip_config, &rmt_config, &led_strip));
+
+  fx = new WS2812FX(NUM_LEDS, led_strip);
+
+  // Have a colour show up as a sign that LEDs are alive
+  fx->init();
+  fx->setBrightness(100);
+  fx->setSpeed(1000);
+  fx->setMode(FX_MODE_BREATH);
+  fx->setColor(YELLOW);
+  fx->start();
+}
+// The name of this function is important for Arduino compatibility.
+void loop()
+{
+  // run_inference();
+
+  // Run LED stuff
+  drive_system_loop(fx);
+  fx->service();
 }

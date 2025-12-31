@@ -1,3 +1,5 @@
 dependencies:
   espressif/esp-tflite-micro:
     version: '*'
+  ixtech-dev/ws2812fx: ^1.4.5
+  espressif/bdc_motor: ==0.2.1

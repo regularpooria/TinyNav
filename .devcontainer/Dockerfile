@@ -1,6 +1,6 @@
 FROM espressif/idf:release-v6.0
 
-ARG DEBIAN_FRONTEND=nointeractive
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
   && apt install -y -q \
@@ -11,6 +11,7 @@ RUN apt-get update \
   libnuma1 \
   libpixman-1-0 \
   linux-tools-virtual \
+  udev \
   && rm -rf /var/lib/apt/lists/*
 
 RUN update-alternatives --install /usr/local/bin/usbip usbip `ls /usr/lib/linux-tools/*/usbip | tail -n1` 20

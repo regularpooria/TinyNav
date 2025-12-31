@@ -18,12 +18,12 @@ limitations under the License.
 
 #include "main_functions.h"
 
-extern "C" void app_main(void) {
+extern "C" void app_main(void)
+{
   setup();
-  while (true) {
+  while (true)
+  {
     loop();
-
-    // trigger one inference every 500ms
-    vTaskDelay(pdMS_TO_TICKS(500));
+    vTaskDelay(pdMS_TO_TICKS(20)); // ~50 Hz
   }
 }

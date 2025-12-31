@@ -1,4 +1,14 @@
 dependencies:
+  espressif/bdc_motor:
+    component_hash: 4165d3711efeab02dfe120716a0c10f9a838bd935e7230efa5f614976217b2eb
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 0.2.1
   espressif/esp-nn:
     component_hash: f4633a02f05fef53b80de65ade1f733ebdef637e4c8b8be4eb11f5e27f6d9f3e
     dependencies:
@@ -23,12 +33,32 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 1.3.5
+  espressif/led_strip:
+    component_hash: f0d1b7f93eb3ee57bcfd220656176b0b5616e1947f89ed44364555cf910c4840
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.0'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 3.0.2
   idf:
     source:
       type: idf
     version: 6.0.0
+  ws2812fx:
+    dependencies: []
+    source:
+      path: /workspaces/tinynav/components/ws2812fx
+      type: local
+    version: 1.4.5
 direct_dependencies:
+- espressif/bdc_motor
 - espressif/esp-tflite-micro
-manifest_hash: cde8dae00d38eef8cec787ab91f748b0cd5f0ccb4615189e6b7265ecee0d3022
+- espressif/led_strip
+- idf
+- ixtech-dev/ws2812fx
+manifest_hash: 03c3a3a1196c5c9611ee18cca769afb6540b259f3d64b6a217c532f76aa71072
 target: esp32p4
 version: 2.0.0

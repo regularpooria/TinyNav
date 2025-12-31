@@ -18,20 +18,24 @@ limitations under the License.
 
 // Expose a C friendly interface for main functions.
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
-// Initializes all data needed for the example. The name is important, and needs
-// to be setup() for Arduino compatibility.
-void setup();
+  // Initializes all data needed for the example. The name is important, and needs
+  // to be setup() for Arduino compatibility.
+  void setup();
+  void setup_leds();
 
-// Runs one iteration of data gathering and inference. This should be called
-// repeatedly from the application code. The name needs to be loop() for Arduino
-// compatibility.
-void loop();
+  // Runs one iteration of data gathering and inference. This should be called
+  // repeatedly from the application code. The name needs to be loop() for Arduino
+  // compatibility.
+  void loop();
+
+  void run_inference();
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // TENSORFLOW_LITE_MICRO_EXAMPLES_HELLO_WORLD_MAIN_FUNCTIONS_H_
+#endif // TENSORFLOW_LITE_MICRO_EXAMPLES_HELLO_WORLD_MAIN_FUNCTIONS_H_
