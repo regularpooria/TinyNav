@@ -1,0 +1,792 @@
+WS2182FX Change Log
+
+
+v1.4.5 changes 12/01/2024
+-------------------------
+
+1) Removed use of min and max preprocessor macros, which were causing
+    compile issues for various board cores (notably ESP32 v2.0.x and
+	ESP32 v3.0.x). Goodbye, Farewell and Amen!
+
+
+v1.4.4 changes 06/16/2024
+-------------------------
+
+1) Fixed a bug with the "max" macro that prevented compiling on
+    ESP boards.
+
+2) fixed the tester.zsh script.
+
+
+v1.4.3 changes 05/12/2024
+-------------------------
+
+1) Added support for ATtiny processors using the tinyNeoPixel
+	library from megaTinyCore.
+	https://github.com/SpenceKonde/megaTinyCore
+	Note ATtiny processors are extremely memory constrained.
+	It's very easy to create sketches that are too big and either
+	won't compile or cause strange behavior at run time.
+
+2) Added the ws2812fx_ATtiny example sketch.
+
+3) Overriding the parent library's show() function was becoming
+	problematic, so WS2812FX's show() function has been renamed
+	execShow(). User sketches shouldn't call show() directly,
+	but if you do, show() will now execute the parent classes 
+	show() function and skip any customShow code.
+
+
+v1.4.2 changes 05/11/2023
+-------------------------
+
+1) Fixed a bug in the ICU effect that caused bad behavior when a
+	strip was divided into segments and ICU was assigned to one
+	of the segments.
+
+2) updated tester.zsh to work with Arduino IDE 2.0
+
+3) Overloaded the Adafruit_NeoPixel fill() function to respect
+	segment boundaries.
+
+4) refactored single_dynamic and multi_dynamic effects to use
+	SIZE option (as proposed by @BlockThor in PR #334)
+
+5) Switched from the ESPAsyncWebServer lib to the ESPAsyncWebSrv
+	lib in some of the ESP examples, since ESPAsyncWebSrv is
+	functionally equivalent and is available from the library
+	manager.
+
+6) fixed a bunch of typos.
+
+
+v1.4.1 changes 07/18/2022
+-------------------------
+
+1) Since ESP and Arduino microprocessors now have separate header
+	files (see v1.4.0 change log notes), the 15 custom effects were
+	added as built-in effects for ESP (and RP2040) devices. The
+	mechanism to add custom effects is still available for Arduino
+	projects (see the ws2812fx_custom_effect2 example sketch), but
+	with limited memory, you'll need to pick and choose the custom
+	effects that you want included in Arduino projects.
+	The following effects are now built-in for ESP and RP2040 devices:
+		Block Dissolve
+		ICU
+		Dual Larson
+		Running Random2
+		Filler Up
+		Rainbow Larson
+		Rainbow Fireworks
+		Trifade
+		VU Meter
+		Heartbeat
+		Bits
+		Multi Comet
+		Flipbook (same as the matrix custom effect)
+		Popcorn
+		Oscillator
+
+2) The ability to inject external data into some of the "new"
+	built-in effects was added. This allows potentially very large
+	arrays or data structs to be used by effects and control how
+	they behave. The new ws2812fx_extData example sketch demonstrates
+	how this can be done. Probably not something for a novice
+	developer, but can be a very powerful feature if you know what
+	you're doing.
+
+3) renamed the "random_wipe_bright" effect to "running_random2", since
+	it's really just a variant of the running_random effect.
+
+4) added getRawPixelColor() and setRawPixelColor() utility functions
+	to get/set pixel data without regard to the Adafruit_NeoPixel
+	global brightness rigmarole.
+
+5) Modified the rainbow_cycle effect so that it would work well with
+	very short segments of LEDs. The timing was slowed down a bit as
+	well, so you may need to adjust the speed parameter if you're
+	using that effect.
+
+6) Tweaked the blink_rainbow and strobe_rainbow effects, so the
+	colors would change more quickly. 
+
+7) Modified the tester.zsh automated testing script to include tests
+	for RP2040 processors. examples/tester_Jul2022.txt contains the
+	latest test results.
+
+
+v1.4.0 changes 03/23/2022
+-------------------------
+
+1) The source files were getting very big, so I split the .h and .cpp
+	files into three .h files and three .cpp files. The files are
+	still pretty big, but are now a little more manageable.
+
+2) The Arduino's memory limitations are starting to really hinder
+	expanding the library's feature set, so I split the header file into
+	separate files for ESP (modes_esp.h) and Arduino (modes_arduino.h).
+	Hopefully this will make it easer to add new features/effects for
+	ESP devices, and not blow up the memory footprint for Arduino devices.
+
+3) Updated the ws2812fx_patterns_web example sketch to use the
+	async web server (ESPAsyncWebServer) instead of ESP8266WebServer,
+	so the sketch now supports ESP8266 and ESP32.
+
+4) removed support for the legacy ArduinoJson v5 library in the
+	ws2812fx_patterns_web example sketch. You must use the
+	ArduinoJson v6 library.
+
+5) Added the tester.zsh script to verify all the example sketches
+	for Arduino, ESP8266 and ESP32 devices. Automated
+	testing??? What a concept! :)
+
+6) Refactored the modes for ESP devices, so the mode data is stored
+	in a struct, and added an effect category to the struct. This
+	should have been done long ago, but the tight coupling of Arduino
+	and ESP code made it problematic. Hopefully this will spur more
+	innovative GUI designs that don't just show one gigantic list
+	of effects.
+
+7) POTENTIALLY BREAKING CHANGE
+	Changed the timing of the CHASE, TWINKLE_FADE, RUNNING, DYNAMIC
+	and Fireworks effects to make them more consistent with the other
+	effects. A speed setting of 1000 should give reasonable results
+	for all effects. While this isn't strictly a breaking change,
+	your speed settings for these effects might need to be tweaked
+	to get the same animation rate you had before.
+
+8) Refactored the rainbow_chase effect to be more efficient.
+
+
+v1.3.6 changes xx/xx/xxxx
+-------------------------
+
+1) Added REVERSE option for rainbow_cycle effect and fixed direction
+   for rainbow_cycle, theater_chase_rainbow and rain effects so they
+   are consistent with he other effects. Thanks @DominikGrudzinski.
+   See issue #304.
+
+2) Implemented @FedericoBusero's idea to disable auto_cycle in the
+   esp8266_webinterface example sketch when a mode is selected.
+   See PR #302.
+
+
+v1.3.5 changes 11/18/2021
+-------------------------
+
+1) When specifying a binary number, changed from "Bxxxx" notation
+    to "0bxxxx" notation. Apparently this is the preferred notation,
+	since the old notation threw compiler warnings. See issue #292.
+
+2) Minor tweaks to some example sketches to remove compiler warnings.
+
+3) Updated ws2812fx_soundfx example sketch to use LittleFS file
+    system instead of SPIFFS.
+
+4) Updated the keywords.txt file.
+
+5) Removed the ws2812fx_esp32 example sketch since the
+    Adafruit_Neopixel lib (v1.7.0) implemented an ESP32 RMT driver
+    and we can just use that.
+
+6) Fixed a bug in some of the effects that caused the last LED in
+    a segment to always be off. See issue #299. Thanks @DanielWeigl
+	for catching that.
+
+7) moved the rain effect from a custom effect to a built-in effect.
+
+8) Added "headers": "WS2812FX.h" to the library.json file as
+    suggested by @ivankravets in PR #300.
+
+
+v1.3.4 changes 8/21/2021
+------------------------
+
+1) Updated the web interface example sketches to be compatible
+    with ESP32 as suggested by kadu in PR #280. Although beware
+	of the ESP32 "flickering" issue when using more than a few
+	LEDs (issue #223). Use the RMT technique in the ws2812fx_esp32
+	example sketch as a workaround.
+
+2) Added setRandomSeed() function to allow greater control of
+    random number generation as suggested by schumar in issue #288.
+
+3) Added the ws2812fx_teensy example sketch to demo how to use
+    Paul Stoffregen's non-blocking WS2812Serial library for the
+	Teensy. Inspired by issue #277.
+
+4) If you aren't using any options in a setSegment() statement,
+    you can just omit the option parameter at the end.
+	Eg. ws2812fx.setSegment(0, 0, 31, FX_MODE_BLINK, RED, 1000);
+	Also setSegment() with no arguments will initialize segment 0
+	with reasonable default values.
+	Eg. ws2812fx.setSegment() is equivalent to
+	    ws2812fx.setSegment(0, 0, getLength()-1, DEFAULT_MODE, DEFAULT_COLOR, DEFAULT_SPEED)
+
+5) Created a generic blend() function, which will eventually be
+	used to merge pixel data to create effect transitions.
+
+6) Refactored the color_blend() function to use the new generic
+	blend() function. Better performance.
+
+7) Added a new WS2812FXT class to help create effect transitions
+	and the ws2812fx_transitions example sketch to demo its use.
+
+8) Started working on some API documentation.
+
+9) Fixed an odd bug in the serial_control example sketch that was
+	causing a compile error on Raspberry Pi Pico.
+
+
+v1.3.3 changes 4/15/2021
+------------------------
+
+1) Added bits.h custom effect.
+
+2) Added ws2812fx_matrix and ws2812fx_audio_reactive example sketches.
+
+3) Made twinkleFOX one of the built-in effects, so it doesn't
+	need to be included as a custom effect anymore. It's such a
+	versatile, universal effect I thought it deserved a spot as
+	a built-in effect.
+
+4) Significant rewrite of the ws2812fx_segments_web example sketch.
+	The web app now gets all of its resources from the ESP (instead
+	of retrieving them from the Internet), and I've added some
+	new features.
+
+5) Some minor code cleanup (changed data type boolean to bool).
+
+
+v1.3.2 changes 9/19/2020
+------------------------
+
+1) Fixed a bug in esp8266_webinterface example sketch, which was
+	causing issues with auto cycle mode if you used the myModes[]
+	array to create a custom list of effects.
+
+2) Added code to properly initialize the segment pointers. Fixes
+	a bug that caused a crash if you tried to manipulate an LED's
+	color without first calling the strip's service() function.
+
+3) Added the ws2812fx_overlay and ws2812fx_spi example sketches.
+
+
+v1.3.1 changes 6/2/2020
+------------------------
+
+1) Changed _modes[] to a static array. Saves a bunch of flash
+	and SRAM memory when instantiating more than one WS2812FX object.
+
+2) Added ws2812fx_virtual_strip example sketch to demonstrate how to
+	use setPixels() to manage the Adafruit_NeoPixel pixel data.
+
+3) Changed RUNNING_COLOR effect so that the background color is
+	set to colors[1] instead of hardcoded to WHITE. The default
+	background color will be BLACK now. Set color[1]=WHITE if
+	you want the old behavior.
+
+4) Updated the README.md file.
+
+
+v1.3.0 changes 5/11/2020
+------------------------
+
+1) This library now makes use of the new Adafruit fill() function,
+	so requires Adafruit_NeoPixel library v1.1.7 or newer.
+
+2) Added the cycle flag to the effects that did not have it implemented.
+
+3) Refactored many effects, because the flash memory footprint was
+	getting too big to fit in my Arduino Leonardo. Some of the effects
+	don't look exactly the same, but they're pretty close.
+
+4) Changed the ICU effect from a built-in effect to a custom effect,
+	since it was quite large and removing it from the built-in effects
+	made more room for custom effects. It always seemed like a specialty
+	effect to me anyway.
+
+5) Refactored the Matrix custom effect so it can be configured from 
+	outside of the Matrix.h file.
+
+6) Refactored the ws2812fx_webinterface example sketch to take advantage
+	of flex box layout and a more modern color picker.
+
+7) Added API for managing idle/active segments.
+	a) segment arrays are now configured at runtime instead of compile
+		time, allowing more flexibility in allocating SRAM for
+		that data (see the new WS2812FX constructor).
+
+	b) The number of segments and the number of segment_runtimes
+		are independent now, allowing for more fine grained SRAM
+		allocation and the creation of "idle" segments that are
+		activated at a later time. See the new
+		ws2812fx_segment_sequence example sketch.
+
+8) Increased the maximum number of custom effects from 4 to 8.
+
+9) Substantial refactoring of the segment code to use global variables
+	instead of macros, which makes sketches significantly smaller.
+
+10) added setPixels() function to allow users to manually manage the
+	underlying Adafruit_NeoPixel pixel data.
+
+
+v1.2.4 changes 5/8/2020
+------------------------
+
+1) Fixed the Static effect, so that it uses the segment's speed parameter
+    instead of hardcoding the speed to 500. Makes the Static effect more
+    responsive to mode changes.
+    See https://github.com/kitesurfer1404/WS2812FX/issues/220.
+
+2) Fixed Random Chase custom effect to work when brightness < 255.
+    See https://github.com/kitesurfer1404/WS2812FX/issues/217.
+
+3) Updated the Running Lights effect to use two colors instead of just one.
+    See https://github.com/kitesurfer1404/WS2812FX/issues/221.
+
+4) Added the Matrix custom effect to demonstrate animating a 2D LED matrix.
+    See https://github.com/kitesurfer1404/WS2812FX/issues/216.
+
+
+v1.2.3 changes 2/1/2020
+------------------------
+
+1) Fixed minor type casting problem that was generating "comparison between
+	signed and unsigned integer expressions" warnings when compiling for
+	Teensy.
+
+2) Added "depends=Adafruit NeoPixel" parameter to library.properties.
+	see https://github.com/kitesurfer1404/WS2812FX/pull/205
+
+3) Added the Heartbeat custom effect. Just in time for Valentine's Day. :)
+
+
+v1.2.2 changes 12/21/2019
+------------------------
+
+1) Refactored the ws2812fx_segments_web example sketch to allow the use
+	of ArduinoJson v6, and replaced the materialize front-end UI framework
+	with Material Components for the Web (https://material.io/develop/web/),
+	since support for Materialize seems to be fading.
+
+2) Updated esp8266_webinterface example sketch to allow setting a specific
+	speed.
+
+3) Refactored the RainbowLarson and Trifade custom effects so they work
+	properly when used in more than one segment (removed static variables).
+
+4) Added the TwinkleFox custom effect
+
+5) Updated the Flash Sparkle effect to implement SIZE option.
+
+
+v1.2.1 changes 9/12/2019
+------------------------
+
+1) Refactored the ws2812fx_dma example sketch to use the proper NeoPixelBus API.
+
+2) Incorporated chrissicool's suggestion to remove platform restriction for
+	PlatformIO users, as well as some other minor tweaks to library.json.
+	See https://github.com/kitesurfer1404/WS2812FX/pull/186
+
+3) Updates to README.md and WS2812FX Users Guide.md
+
+4) Fixed the comments at the top of the RainbowFireworks.h custom effect
+
+
+v1.2.0 changes 6/11/2019
+------------------------
+
+1) Removed segment reset when changing effect color or speed
+
+2) Updated the fireworks effect to use all three segment colors
+
+3) Added rainbowFireworks custom effect
+
+
+v1.1.9 changes 4/22/2019
+------------------------
+
+1) Added ws2812fx_esp32 example sketch
+
+2) update RUNNING_LIGHTS mode to take SIZE option into account
+
+3) added getNumBytesPerPixel() helper function
+
+
+v1.1.8 changes 3/6/2019
+------------------------
+
+1) Added ArduBadge to README.md
+
+2) Added fade_out(uint32_t) and setColor(uint8_t, uint8_t, uint8_t, uint8_t)
+	functions for more flexibility
+
+3) fixed random16() bug that was causing incorrect results when run on
+	Arduino. See https://github.com/kitesurfer1404/WS2812FX/issues/161
+
+4) Enhancement to ws2812fx_patterns_web example sketch to make it
+	more compatible with ArduinoJson v6. The current production
+	version of ArduinoJson v6 (v6.9.1) works well.
+
+5) Added fillerup custom effect
+
+
+v1.1.7 changes 1/18/2019
+------------------------
+
+1) Updated the User Guide
+
+2) Updated the ws2812fx_patterns_web example sketch so that it
+	could use version 5 or version 6 of the ArduinoJson library.
+	(as I write this, ArduinoJson v6 is beta software and has some
+	issues, so please stick with v5 if you can)
+
+3) Added another variant of the setSegment() function with this
+	parameter signature:
+	setSegment(uint8_t, uint16_t, uint16_t, uint8_t, uint32_t, uint16_t, uint8_t)
+
+4) Fixed a bug in the Larson Scanner effect that caused it to
+	crash if the length of the segment is 1. Fixes issue #145:
+	https://github.com/kitesurfer1404/WS2812FX/issues/145
+
+5) Updated the Rain custom effect to make use of all three colors.
+	See the comment section at the top of the Rain.h file.
+
+6) the esp8266_webinterface example sketch was refactored so it
+	would compile with the new ESP8266 core platform v2.5.0-beta.
+	The	new toolchain throws an "lvalue required as unary '&' operand"
+	error when compiling this statement:
+	uint32_t tmp = (uint32_t) strtol(&server.arg(i)[0], NULL, 16);
+	which was changed to this:
+	uint32_t tmp = (uint32_t) strtol(server.arg(i).c_str(), NULL, 16);
+
+7) fixed a bug in the ws2812fx_patterns_web example sketch that made
+	it incompatible with LEDfx v1.0.1. Thanks Niklas.
+
+
+v1.1.6 changes 12/14/2018
+------------------------
+
+1) A couple changes to the ws2812fx_patterns_web example sketch
+	to make it more robust and implement a new feature that allows
+	patterns to be individually enabled/disabled.
+
+2) Added a copyPixels() function to make it easier to create
+	scrolling effects.
+
+3) Added the rain custom effect, which makes use of copyPixels().
+
+4) My apologies for the rapid pace of changes to WS2812FX lately.
+	The library gets a fair amount of attention in prep for my
+	Christmas display. These updates have been pushed out every
+	couple of weeks, which I admit is excessive, but it's easier
+	for me to manage a few small updates rather then one ginormous
+	one. Happily, I think this should be it for a while. :)
+	Happy holidays everyone.
+
+
+v1.1.5 changes 12/6/2018
+------------------------
+
+1) Added a SIZE option. It works similar to the FADE_RATE
+	option, affecting the size of blocks of pixels in some
+	of the effects. See the Users Guide for details,
+
+2) Added random16() function to generate 16-bit random numbers.
+
+3) Fixed several bugs with the Block Dissolve custom effect.
+
+4) Fixed a bug with the RUNNING_RANDOM effect that would cause
+	it to misbehave when used with very long segments.
+
+5) Refactored the THEATER_CHASE and SCAN effects to make them
+	more efficient and reduce their overall memory footprint.
+
+6) Refactored the DUAL_LARSON custom effect to replace static
+	variables with run-time variables. You can now have more
+	then one segment assigned to the DUAL_LARSON effect.
+
+7) Updated the library version number in the library.json and
+	library.properties files. Forgot to do this in v1.1.4,
+	so that version never got pushed out to the Arduino IDE
+	Library	Manager. Oops, sorry.
+
+
+v1.1.4 changes 12/1/2018
+------------------------
+
+1) Refactored the custom effect code to make it more flexible. You
+	can now dynamically assign custom effects to any one of the
+	four _modes[] 'slots' by using the setCustomMode(index, name, *p)
+	function.
+
+2) Fixed a bug in the DualLarson custom effect that caused it to
+	misbehave if it was assigned to a segment that didn't span
+	the entire LED strip.
+
+3) refactored the Popcorn custom effect to fix a bug with pixels
+	spilling over into adjacent segments and to implement the REVERSE
+	option.
+
+4) added getNumBytes() function to retrieve the number of bytes
+	allocated to the Adafruit_NeoPixel pixels[] array. Handy to
+	know if you want to directly manipulate the array data.
+
+5) refactored the ws2812fx_patterns_web example sketch to accommodate
+	upcoming enhancements to it's companion Android app, LEDfx.
+	https://play.google.com/store/apps/details?id=com.champlainsystems.ledfx
+
+6) Updated the Users Guide to add some additional information about
+	custom effects.
+
+
+v1.1.3 changes 11/10/2018
+------------------------
+
+1) Removed WS2812FX's _brightness variable. Didn't seem to be
+	needed, since the Adafruit_NeoPixel lib has it's own brightness
+	variable. Keeping the two variables in sync was sometimes a
+	problem, so removing _brightness seemed the easy solution.
+
+2) Refactored the serial_control example sketch to remove use of
+	the String class. That reduced the flash memory footprint by
+	about 1900 bytes, so the sketch now fits in an Arduino Leonardo.
+
+3) Added the ws2812fx_limit_current example sketch to show how to
+	limit current by dynamically adjusting brightness.
+
+4) Added intensitySum() and intensitySums() functions to calc the
+	sum of LED intensities. Can be used for rudimentary power
+	calculations (see ws2812fx_limit_current example sketch).
+
+5) Removed the call to show() in the init() function, since this
+	could potentially cause problems trying to update the LEDs
+	before they were properly initialized.
+
+6) Fixed a bug in the color_blend() function that caused the
+	FX_MODE_FADE effect to misbehave when run on an Arduino that
+	uses 16-bit integers.
+
+7) Added the Popcorn custom effect.
+
+
+v1.1.2 changes 10/25/2018
+------------------------
+
+1) Various enhancements to the ws2812fx_segments_web example sketch.
+
+2) Minor enhancement to the DualLarson custom effect.
+
+3) Added pause() and resume() functions.
+
+4) Added resetSegmentRuntime() and isTriggered() functions.
+
+5) Minor updates to the documentation.
+
+
+v1.1.1 changes 10/10/2018
+------------------------
+
+1) Fixed a bug introduced in v1.1.0 of the ws2812fx_custom_effect
+	example sketch.
+
+2) Updated the ws2812fx_segments_web example sketch to use the
+	latest version (v1.0.0) of the materialize UI framework
+	(https://materializecss.com/). Also added a brightness slider.
+
+3) added resetSegmentRuntimes() and getSegmentRuntimes() functions.
+
+4) added get and set functions for segment mode, speed, colors and options.
+
+5) Fixed the getLength() function so it would return the number
+	of LEDs in the strip, not just the number of LEDs in the first
+	segment.
+
+6) Added the ws2812fx_msgeq7 example sketch to show how to use
+	WS2812FX with a MSGEQ7 chip to create a spectrum analyzer.
+
+
+v1.1.0 changes 9/12/2018
+------------------------
+
+1) Potential breaking change! The two getSegment functions,
+	getSegment() and getSegmentRuntime(), have been changed to return
+	pointers to their respective data structures rather then references.
+	This allows the segment data to be updated, rather then be read-only.
+	I don't think these	functions are used by the vast majority of
+	WS2812FX users, since they're intended for advanced developers that
+	have a need to dynamically manipulate the inner workings of the
+	library. They're primarily used to create custom effects. Since
+	the functions now return pointers the syntax for using them changes
+	from this:
+		WS2812FX::Segment seg = ws2812fx.getSegment();
+  		int seglen = seg.stop - seg.start + 1;
+	to this:
+		WS2812FX::Segment* seg = ws2812fx.getSegment();
+  		int seglen = seg->stop - seg->start + 1;
+	All of the custom effects in the src/custom folder have been
+	updated to accommodate this change.
+
+2) Another potential breaking change! The AUX_PARAM variables in the
+	segment_runtime struct have been refactored to allow some additional
+	flexibility in their use. Again this is an advanced feature that no
+	one probably uses unless you're writing custom effects, so in all
+	likelihood doesn't affect many users. The AUX_PARAM definition
+	changed from this:
+		uint16_t aux_param;
+		uint16_t aux_param2;
+	to this:
+		uint8_t aux_param;
+		uint8_t aux_param2;
+		uint16_t aux_param3;
+	If you're using aux_param, then you may have to take into
+	consideration the new data types.
+
+3) add two new functions, isFrame() and isCycle(), to provide feedback
+	about the state of an effect to the user's sketch. isFrame() returns
+	true when the LEDs in a	segment	have changed (think of it as a
+	"frame" of animation) and isCycle() returns true when a repetitive
+	effect starts a cycle. See the ws2812fx_soundfx example sketch for
+	an example of how these functions might be used.
+
+4) Three new custom effects: BlockDissolve, RainbowLarson and VUMeter.
+
+5) Created a new example sketch which shows how to add sound effects
+	to your light show. See ws2812fx_soundfx.
+
+v1.0.9 changes 8/3/2018
+------------------------
+
+1) Created a color_blend() helper function.
+
+2) Refactored the Fade effect to use the color_blend function, so
+	you can now fade to a second color (not just black).
+
+3) Tweaked the Scan, Twinkle and Sparkle effects to allow a background
+	color other then black.
+
+4) Some performance improvements:
+	a) sped up the Running Lights effect by refactoring some division
+	operations, which are very slow on Arduino.
+
+	b) sped up the fade_out() function by replacing floating point
+	math with integer math.
+
+	c) refactored the Fireworks effects, which were very slow because
+	they called the sluggish getPixelColor() function many, many times.
+
+5) added the TriFade and Oscillate custom effects.
+
+v1.0.8 changes 7/25/2018
+------------------------
+
+1) Fixed a bug introduced in v1.0.7 that assigned the wrong names
+to the Halloween, Fire Flicker and Circus Combustus effects.
+
+2) Some performance improvements:
+	a) many effects use the Arduino random() function, which is quite
+	slow, so added a fast 8-bit random number generator function
+	shamelessly borrowed from the smart, maniacally-focused-on-speed
+	FastLED team.
+
+	b) refactored the tricolor_chase() function, which was slower then
+	it needed to be.
+
+	c) adjusted MIN_SPEED for speedy ESP devices, so they can run
+	animations much faster then pokey Arduinos.
+
+3) added the MultiComet custom effect
+
+
+v1.0.7 changes 7/19/2018
+------------------------
+
+1) Moved the _name array variable out of the WS2812FX class and made
+it a global variable. This fixes the problem where putting local
+variables in PROGMEM (with the F() macro) caused "section type conflict
+with __c" compiler error for ESP implementations.
+See this issue: https://github.com/kitesurfer1404/WS2812FX/issues/83
+
+Also, the examples/serial_control sketch was refactored to remove the ugly
+code hack used to workaround this problem in the past.
+
+As a bonus, making _name a global variable is more memory efficient and
+reduces the Arduino flash memory footprint by 1600 bytes.
+
+2) Expanded the custom effect feature to allow for up to four custom
+effects. See the examples/ws2812fx_custom_effect2 sketch for a demo
+of using more then one custom effect in a sketch.
+
+3) added a src/custom folder to contain user written custom effects. To
+maintain Arduino compatibility, with its limited flash memory, it's not
+practical to just incorporating more and more effects into the library.
+Creating a folder for custom effects, that users can pick and choose
+from, is a first step toward partitioning the mode/effect code base.
+
+
+v1.0.6 changes 6/12/2018
+------------------------
+
+1) Small tweak to theater chase effect to allow using a background color
+other then black.
+
+2) Added the ws2812fx_alexa example sketch to demo using an Amazon Echo and
+Alexa to control the show.
+
+
+v1.0.5 changes 5/30/2018
+------------------------
+
+1) Added custom effect and custom show sections to the user's guide
+
+2) Added the ws2812fx_dma example sketch to demo a custom show function
+
+3) Updated the ws2812fx_patterns_web example sketch to be able to use
+the new gamma and fade rate features introduced in v1.0.4.
+
+
+v1.0.4 changes 5/13/2018
+------------------------
+
+1) fixed breath and fade mode's divide-by-zero bug (caused system to crash
+when using those two modes and setting brightness to zero).
+
+2) fixed multi-strobe mode, which was broken since the speed code rewrite.
+
+3) changed customMode from a global variable to an instance variable, so
+multiple instances of ws2812fx can each have their own custom effect.
+
+4) added ws2812fx_custom_FastLED example sketch to show how to integrate
+FastLED features into WS2812FX.
+
+5) added user's guide.
+
+6) reduced the Arduino flash memory footprint by about 400 bytes.
+
+
+v1.0.3 changes 5/5/2018
+-----------------------
+
+1) rearranged files and created a library.properties files
+to comply with the Arduino IDE 1.5 Library specification.
+
+2) additions to the keywords.txt file to highlight new keywords.
+
+3) WS2812FX now uses additional features from the Adafruit_NeoPixel
+library. Adafruit_NeoPixel library v1.1.4 or newer is required.
+
+4) New fade function that can fade to any color (not just black)
+and the fade speed can be adjusted.
+
+5) Added optional gamma correction.
+
+6) created new setSegment function to config fade and gamma options.
+(see WS2812FX.h for #defines to make option config easier)
+	i.e. setSegment(segNum, start, stop, mode, colors[], speed, NO_OPTIONS);
+	i.e. setSegment(segNum, start, stop, mode, colors[], speed, FADE_FAST);
+	i.e. setSegment(segNum, start, stop, mode, colors[], speed, FADE_SLOW);
+	i.e. setSegment(segNum, start, stop, mode, colors[], speed, REVERSE & FADE_XSLOW);
+	i.e. setSegment(segNum, start, stop, mode, colors[], speed, GAMMA);
