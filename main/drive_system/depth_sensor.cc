@@ -1,6 +1,8 @@
 #include "depth_sensor.h"
 #include "driver/gpio.h"
 #include "driver/uart.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -30,7 +32,7 @@ void depth_sensor_init()
       .stop_bits = UART_STOP_BITS_1,
       .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
       .rx_flow_ctrl_thresh = 0,
-      .source_clk = UART_SCLK_XTAL,
+      .source_clk = UART_SCLK_DEFAULT,
       .flags = {
           .allow_pd = 0,
           .backup_before_sleep = 0}};
@@ -41,27 +43,38 @@ void depth_sensor_init()
 
   printf("Depth sensor UART initialized\n");
 
+  // Wait before sending commands (mimics Arduino delay)
+  vTaskDelay(pdMS_TO_TICKS(2000));
+
   // Send sensor commands
 #ifdef USE_NONLINEAR
   const char *unit_cmd = "AT+UNIT=0\r";
   uart_write_bytes(UART_PORT_NUM, unit_cmd, strlen(unit_cmd));
+  vTaskDelay(pdMS_TO_TICKS(2000));
 #elif defined(USE_LINEAR)
   char unit_cmd[20];
   snprintf(unit_cmd, sizeof(unit_cmd), "AT+UNIT=%d\r", UNIT_VALUE);
   uart_write_bytes(UART_PORT_NUM, unit_cmd, strlen(unit_cmd));
+  vTaskDelay(pdMS_TO_TICKS(2000));
 #endif
 
-  char disp_cmd[] = "AT+DISP=7\r";
+  printf("UART display turning on\n");
+  const char *disp_cmd = "AT+DISP=7\r";
   uart_write_bytes(UART_PORT_NUM, disp_cmd, strlen(disp_cmd));
+  vTaskDelay(pdMS_TO_TICKS(6000));
 
-  char fps_cmd[] = "AT+FPS=7\r";
+  printf("Setting FPS\n");
+  const char *fps_cmd = "AT+FPS=7\r";
   uart_write_bytes(UART_PORT_NUM, fps_cmd, strlen(fps_cmd));
+  vTaskDelay(pdMS_TO_TICKS(6000));
 
+  printf("Pixel compression\n");
   char binning_cmd[20];
   snprintf(binning_cmd, sizeof(binning_cmd), "AT+BINN=%d\r", BINNING_FACTOR);
   uart_write_bytes(UART_PORT_NUM, binning_cmd, strlen(binning_cmd));
+  vTaskDelay(pdMS_TO_TICKS(6000));
 
-  printf("Sensor initialized\n");
+  printf("SENSOR READY\n");
 }
 
 // -------------------- Header Parsing --------------------
@@ -87,20 +100,14 @@ void readHeader()
 void processDepth()
 {
   int pixelIndex = 0;
-  int maxIndex = tempBuffer - 2;
 
-  // Validate tempBuffer size
-  if (tempBuffer < HEADER_SIZE + 2 || tempBuffer > BUFFER_SIZE)
-  {
-    printf("Warning: Invalid buffer size %d\n", tempBuffer);
-    return;
-  }
-
-  for (int i = HEADER_SIZE; i < maxIndex; i++)
+  // Read pixel data (starts at headerSize, ends 2 bytes before end marker)
+  for (int i = HEADER_SIZE; i < tempBuffer - 2; i++)
   {
     int row = pixelIndex / imageCols;
     int col = pixelIndex % imageCols;
 
+    // Safety check
     if (row < MAX_IMAGE_SIZE && col < MAX_IMAGE_SIZE)
     {
       depthMap[row][col] = toMillimeters(rxBuffer[i]);
@@ -112,6 +119,8 @@ void processDepth()
 float toMillimeters(uint8_t pixelValue)
 {
 #ifdef USE_NONLINEAR
+  // Sensor uses formula 5.1*sqrt(x)
+  // Reverse: divide by 5.1 then square
   float normalized = pixelValue / 5.1f;
   return normalized * normalized;
 #elif defined(USE_LINEAR)
@@ -131,7 +140,7 @@ void printDepth()
   {
     for (int j = 0; j < imageCols; j++)
     {
-      printf("%.2f\t", depthMap[i][j]);
+      printf("%.0f\t", depthMap[i][j]);
     }
     printf("\n");
   }
@@ -142,37 +151,51 @@ bool getPacket()
 {
   uint8_t byte;
   int len = uart_read_bytes(UART_PORT_NUM, &byte, 1, 0); // non-blocking
+
   if (len <= 0)
     return false;
 
-  switch (packetState)
+  // ---------------------------------------STATE 0------------------------------
+  if (packetState == 0)
   {
-  case 0: // waiting for 0x00
+    // STATE 0, waiting for start (0x00)
     if (byte == FRAME_START_BYTE_1)
     {
+      // Found start byte (0x00), reset buffer and save the byte
       bufferIndex = 0;
       rxBuffer[bufferIndex++] = byte;
+      // Transitioning to state 1 now
       packetState = 1;
     }
-    break;
-
-  case 1: // waiting for 0xFF
+  }
+  // ---------------------------------------STATE 1-----------------------------------
+  else if (packetState == 1)
+  {
+    // STATE 1, waiting for second start byte (0xFF)
     if (byte == FRAME_START_BYTE_2)
     {
+      // Save new byte to the buffer
       rxBuffer[bufferIndex++] = byte;
+      // Transitioning to state 2 now
       packetState = 2;
     }
     else
     {
+      // ERROR, follow up byte after 0x00 was not 0xFF, return to packet state 0
       packetState = 0;
     }
-    break;
-
-  case 2: // collecting data
+  }
+  // -------------------------------------STATE 2---------------------------------------
+  else if (packetState == 2)
+  {
+    // STATE 2, data collection
+    // This loop continues here to collect bytes until the final byte is sent (0xDD)
     rxBuffer[bufferIndex++] = byte;
 
     if (byte == FRAME_END_BYTE)
     {
+      // This is the end marker, now all of the data is in the rxBuffer array
+      // Reset to state 0 and wait for next frame
       packetState = 0;
       tempBuffer = bufferIndex;
       bufferIndex = 0;
@@ -180,11 +203,11 @@ bool getPacket()
     }
     else if (bufferIndex >= BUFFER_SIZE)
     {
-      printf("----- BUFFER OVERFLOW, dropping packet -----\n");
+      // Safety check so that if we miss 0xDD the buffer does not overflow
+      printf("\n----- BUFFER OVERFLOW (Dropping packet) -----\n");
       packetState = 0;
       bufferIndex = 0;
     }
-    break;
   }
 
   return false;
@@ -195,8 +218,8 @@ void fullPrint()
 {
   if (getPacket())
   {
-    readHeader();
-    processDepth();
+    readHeader();   // Create the header structure, sync rows and columns
+    processDepth(); // Convert raw bytes into mm and create 2D array depthMap
     printDepth();
   }
 }
