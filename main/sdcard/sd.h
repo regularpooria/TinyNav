@@ -18,7 +18,8 @@ extern "C"
     bool format_if_mount_failed;
     int max_files;
     size_t allocation_unit_size;
-    uint8_t bus_width; // 1 or 4
+    uint8_t bus_width;    // 1 or 4
+    bool high_speed_mode; // true for 40MHz, false for 20MHz
   } sd_card_config_t;
 
   /**
@@ -29,6 +30,7 @@ extern "C"
     sdmmc_card_t *card;
     const char *mount_point;
     bool is_mounted;
+    void *pwr_ctrl_handle; // Power control handle for LDO
   } sd_card_handle_t;
 
   /**
@@ -132,6 +134,20 @@ extern "C"
    * @return sd_card_config_t Default configuration
    */
   sd_card_config_t sd_card_get_default_config(void);
+
+  /**
+   * @brief Test SD card pin connections and diagnose hardware issues
+   *
+   * This function performs diagnostic tests on the SD card pins to check:
+   * - Pin recovery time (indicates pull-up strength)
+   * - Pin voltage levels
+   * - Cross-talk between pins
+   *
+   * Run this if you're experiencing initialization timeouts.
+   *
+   * @return esp_err_t ESP_OK on success
+   */
+  esp_err_t sd_card_test_pins(void);
 
 #ifdef __cplusplus
 }

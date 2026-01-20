@@ -222,8 +222,8 @@ void drive_system_loop(WS2812FX *fx)
   float input_voltage = read_voltage_mv();
 
   // Debug output
-  printf("VOLTAGE: %.2f | Throttle: %.2f | Steering: %.2f | Left: %d%% | Right: %d%%\n",
-         input_voltage, throttle_scaled, steering_scaled, left_speed, right_speed);
+  // printf("VOLTAGE: %.2f | Throttle: %.2f | Steering: %.2f | Left: %d%% | Right: %d%%\n",
+  //        input_voltage, throttle_scaled, steering_scaled, left_speed, right_speed);
 
   fx->setMode(FX_MODE_STATIC);
   if (throttle_scaled > 0.1f)
