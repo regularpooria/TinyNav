@@ -54,10 +54,8 @@ namespace
 // The name of this function is important for Arduino compatibility.
 void setup()
 {
-  // depth_sensor_init();
-  // depth_sensor_task();
-  // xTaskCreate(depth_sensor_task, "depth_sensor_task", 8192, NULL, 5, NULL);
   vTaskDelay(pdMS_TO_TICKS(100)); // 100ms delay before init
+  // xTaskCreate(depth_sensor_task, "depth_sensor_task", 8192, NULL, 5, NULL);
   sd_card_config_t config = sd_card_get_default_config();
   esp_err_t ret = sd_card_init(&config);
   if (ret == ESP_OK)
@@ -69,10 +67,8 @@ void setup()
   {
     ESP_LOGE("MAIN", "SD card init failed: %s", esp_err_to_name(ret));
   }
-  //   sd_card_config_t config = sd_card_get_default_config();
-  //   sd_card_init(&config);
-  //   sd_card_print_info();
 
+  depth_sensor_init();
   drive_system_setup();
   setup_leds();
   // Map the model into a usable data structure. This doesn't involve any
@@ -192,4 +188,5 @@ void loop()
   // Run LED stuff
   drive_system_loop(fx);
   fx->service();
+  depth_sensor_task();
 }

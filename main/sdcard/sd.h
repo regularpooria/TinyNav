@@ -136,6 +136,15 @@ extern "C"
   sd_card_config_t sd_card_get_default_config(void);
 
   /**
+   * @brief Open file on SD card (returns FILE* for direct operations)
+   * 
+   * @param path File path relative to mount point
+   * @param mode File mode ("r", "w", "a", etc.)
+   * @return FILE* File pointer, or NULL on failure
+   */
+  FILE* sd_card_fopen(const char *path, const char *mode);
+
+  /**
    * @brief Test SD card pin connections and diagnose hardware issues
    *
    * This function performs diagnostic tests on the SD card pins to check:

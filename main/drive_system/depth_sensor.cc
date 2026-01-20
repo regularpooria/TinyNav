@@ -5,6 +5,9 @@
 #include "freertos/task.h"
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include "../sdcard/sd.h"
 
 // -------------------- Constants --------------------
 #define FRAME_START_BYTE_1 0x00
@@ -21,6 +24,10 @@ static int bufferIndex = 0;
 
 float depthMap[MAX_IMAGE_SIZE][MAX_IMAGE_SIZE];
 uint8_t rxBuffer[BUFFER_SIZE];
+
+static char g_depth_log_filename[64];
+int g_frame_counter = 0;
+FILE *g_depth_log_file = NULL;
 
 // -------------------- Initialization --------------------
 void depth_sensor_init()
@@ -44,7 +51,7 @@ void depth_sensor_init()
   printf("Depth sensor UART initialized\n");
 
   // Wait before sending commands (mimics Arduino delay)
-  vTaskDelay(pdMS_TO_TICKS(2000));
+  vTaskDelay(pdMS_TO_TICKS(1000));
 
   // Send sensor commands
 #ifdef USE_NONLINEAR
@@ -61,20 +68,50 @@ void depth_sensor_init()
   printf("UART display turning on\n");
   const char *disp_cmd = "AT+DISP=7\r";
   uart_write_bytes(UART_PORT_NUM, disp_cmd, strlen(disp_cmd));
-  vTaskDelay(pdMS_TO_TICKS(6000));
+  vTaskDelay(pdMS_TO_TICKS(5000));
 
   printf("Setting FPS\n");
   const char *fps_cmd = "AT+FPS=7\r";
   uart_write_bytes(UART_PORT_NUM, fps_cmd, strlen(fps_cmd));
-  vTaskDelay(pdMS_TO_TICKS(6000));
+  vTaskDelay(pdMS_TO_TICKS(5000));
 
   printf("Pixel compression\n");
   char binning_cmd[20];
   snprintf(binning_cmd, sizeof(binning_cmd), "AT+BINN=%d\r", BINNING_FACTOR);
   uart_write_bytes(UART_PORT_NUM, binning_cmd, strlen(binning_cmd));
-  vTaskDelay(pdMS_TO_TICKS(6000));
+  vTaskDelay(pdMS_TO_TICKS(5000));
 
   printf("SENSOR READY\n");
+
+  // Find next available log file number
+  int file_num = 1;
+  bool exists = false;
+
+  while (file_num < 10000)
+  {
+    snprintf(g_depth_log_filename, sizeof(g_depth_log_filename), "/depth_log_%04d.csv", file_num);
+    esp_err_t ret = sd_card_file_exists(g_depth_log_filename, &exists);
+    if (ret == ESP_OK && !exists)
+      break;
+    file_num++;
+  }
+
+  printf("Logging to: %s\n", g_depth_log_filename);
+
+  // Open file using SD card API
+  g_depth_log_file = sd_card_fopen(g_depth_log_filename, "w");
+
+  if (g_depth_log_file == NULL)
+  {
+    printf("Failed to open log file: %s\n", g_depth_log_filename);
+    return;
+  }
+
+  // Write header
+  fprintf(g_depth_log_file, "# Depth Sensor Log\n");
+  fprintf(g_depth_log_file, "# Binning Factor: %d\n", BINNING_FACTOR);
+  fprintf(g_depth_log_file, "# Frame,Width,Height,Data...\n");
+  fflush(g_depth_log_file);
 }
 
 // -------------------- Header Parsing --------------------
@@ -216,20 +253,70 @@ bool getPacket()
 // -------------------- Full Processing --------------------
 void fullPrint()
 {
-  if (getPacket())
-  {
-    readHeader();   // Create the header structure, sync rows and columns
-    processDepth(); // Convert raw bytes into mm and create 2D array depthMap
-    printDepth();
-  }
 }
 
 // -------------------- Main Task --------------------
 void depth_sensor_task()
 {
-  while (1)
+  static DepthFrame frame; // Static to avoid stack overflow
+
+  while (!getPacket()) // Keep reading until full packet received
   {
-    fullPrint();
-    vTaskDelay(pdMS_TO_TICKS(10)); // 10ms delay
+    vTaskDelay(pdMS_TO_TICKS(1)); // Small delay to avoid hogging CPU
   }
+  readHeader();   // Create the header structure, sync rows and columns
+  processDepth(); // Convert raw bytes into mm and create 2D array depthMap
+  // printDepth();
+
+  // Log to SD card
+  getDepthFrame(&frame);
+  appendDepthFrame(&frame);
+}
+
+// -------------------- Frame Export --------------------
+void getDepthFrame(DepthFrame *frame)
+{
+  if (frame == NULL)
+    return;
+
+  frame->width = imageCols;
+  frame->height = imageRows;
+  frame->binning_factor = BINNING_FACTOR;
+
+  // Copy depth data
+  for (int i = 0; i < imageRows; i++)
+  {
+    for (int j = 0; j < imageCols; j++)
+    {
+      frame->data[i][j] = depthMap[i][j];
+    }
+  }
+}
+
+bool appendDepthFrame(const DepthFrame *frame)
+{
+  if (frame == NULL || g_depth_log_file == NULL)
+    return false;
+
+  // Write frame header directly
+  fprintf(g_depth_log_file, "%d,%d,%d", g_frame_counter++, frame->width, frame->height);
+
+  // Write depth data row by row to avoid huge buffer
+  for (int i = 0; i < frame->height; i++)
+  {
+    for (int j = 0; j < frame->width; j++)
+    {
+      fprintf(g_depth_log_file, ",%.1f", frame->data[i][j]);
+    }
+  }
+  fprintf(g_depth_log_file, "\n");
+
+  // Sync to disk every 500 frames for power loss protection
+  if (g_frame_counter % 500 == 0)
+  {
+    fflush(g_depth_log_file);
+    fsync(fileno(g_depth_log_file));
+  }
+
+  return true;
 }

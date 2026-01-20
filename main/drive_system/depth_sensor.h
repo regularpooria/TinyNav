@@ -6,10 +6,10 @@
 // -------------------- Configuration --------------------
 #define UART_PORT_NUM UART_NUM_2
 #define UART_BAUD_RATE 115200
-#define UART_RX_PIN 21
-#define UART_TX_PIN 20
+#define UART_RX_PIN 20
+#define UART_TX_PIN 21
 
-#define BUFFER_SIZE 12000
+#define BUFFER_SIZE 16000
 #define HEADER_SIZE 20
 #define MAX_IMAGE_SIZE 100
 
@@ -38,12 +38,23 @@ typedef struct __attribute__((packed))
   uint8_t reserved3;
 } FrameHeader;
 
+typedef struct
+{
+  int width;
+  int height;
+  int binning_factor;
+  float data[MAX_IMAGE_SIZE][MAX_IMAGE_SIZE];
+} DepthFrame;
+
 // -------------------- Globals --------------------
 extern int imageRows;
 extern int imageCols;
 
 extern float depthMap[MAX_IMAGE_SIZE][MAX_IMAGE_SIZE];
 extern uint8_t rxBuffer[BUFFER_SIZE];
+
+extern int g_frame_counter;
+extern FILE *g_depth_log_file;
 
 // -------------------- API --------------------
 // void depth_sensor_task(void *pvParameters);
@@ -56,3 +67,6 @@ void processDepth();
 void printDepth();
 float toMillimeters(uint8_t pixelValue);
 void fullPrint();
+
+void getDepthFrame(DepthFrame *frame);
+bool appendDepthFrame(const DepthFrame *frame);

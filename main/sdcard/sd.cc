@@ -62,6 +62,23 @@ sd_card_config_t sd_card_get_default_config(void)
   return config;
 }
 
+FILE* sd_card_fopen(const char *path, const char *mode)
+{
+  if (!path || !mode)
+  {
+    return NULL;
+  }
+
+  char full_path[MAX_PATH_LEN];
+  esp_err_t ret = build_full_path(path, full_path, sizeof(full_path));
+  if (ret != ESP_OK)
+  {
+    return NULL;
+  }
+
+  return fopen(full_path, mode);
+}
+
 esp_err_t sd_card_init(const sd_card_config_t *config)
 {
   if (!config)
@@ -271,7 +288,7 @@ esp_err_t sd_card_append_file(const char *path, const char *data, size_t len)
     return ret;
   }
 
-  ESP_LOGI(TAG, "Appending to file %s", full_path);
+  // ESP_LOGI(TAG, "Appending to file %s", full_path);
   FILE *f = fopen(full_path, "a");
   if (!f)
   {
@@ -289,7 +306,7 @@ esp_err_t sd_card_append_file(const char *path, const char *data, size_t len)
   }
 
   fclose(f);
-  ESP_LOGI(TAG, "Data appended");
+  // ESP_LOGI(TAG, "Data appended");
 
   return ESP_OK;
 }
