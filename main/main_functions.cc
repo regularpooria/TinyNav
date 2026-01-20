@@ -24,9 +24,10 @@ limitations under the License.
 #include "output_handler.h"
 
 #include "drive_system/drive_system.h"
-
+#include "drive_system/depth_sensor.h"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include "sdcard/sd.h"
 
 // LED‌ stuff
 #include <WS2812FX.h>
@@ -53,7 +54,14 @@ namespace
 // The name of this function is important for Arduino compatibility.
 void setup()
 {
-  drive_system_setup();
+  // depth_sensor_init();
+  // depth_sensor_task();
+  // xTaskCreate(depth_sensor_task, "depth_sensor_task", 8192, NULL, 5, NULL);
+  sd_card_config_t config = sd_card_get_default_config();
+  sd_card_init(&config);
+  sd_card_print_info();
+
+    drive_system_setup();
   setup_leds();
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.

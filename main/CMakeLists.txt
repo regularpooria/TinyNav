@@ -7,10 +7,16 @@ idf_component_register(
         output_handler.cc
         model.cc
         drive_system/drive_system.cc
+        drive_system/depth_sensor.cc
+        sdcard/sd.cc
     PRIV_REQUIRES
         spi_flash
     REQUIRES
         esp_driver_gpio
+        esp_driver_uart
         esp_driver_mcpwm
         esp_adc
+        esp_driver_sdmmc
+        fatfs
+        sd_card
 )
