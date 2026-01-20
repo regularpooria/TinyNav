@@ -14,6 +14,9 @@ RUN apt-get update \
   udev \
   && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get install -y ffmpeg
+RUN pip install -r numpy pandas matplotlib tqdm
+
 RUN update-alternatives --install /usr/local/bin/usbip usbip `ls /usr/lib/linux-tools/*/usbip | tail -n1` 20
 
 # Install ESP-ADF 
