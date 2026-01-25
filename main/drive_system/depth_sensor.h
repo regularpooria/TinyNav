@@ -11,7 +11,7 @@
 
 #define BUFFER_SIZE 16000
 #define HEADER_SIZE 20
-#define MAX_IMAGE_SIZE 100
+#define MAX_IMAGE_SIZE 25
 
 #define BINNING_FACTOR 4
 

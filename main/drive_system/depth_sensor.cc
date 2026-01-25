@@ -28,6 +28,7 @@ uint8_t rxBuffer[BUFFER_SIZE];
 static char g_depth_log_filename[64];
 int g_frame_counter = 0;
 FILE *g_depth_log_file = NULL;
+bool write_to_sd = true;
 
 // -------------------- Initialization --------------------
 void depth_sensor_init()
@@ -87,31 +88,79 @@ void depth_sensor_init()
   int file_num = 1;
   bool exists = false;
 
-  while (file_num < 10000)
+  char buffer[256];
+  size_t bytes_read = 0;
+  bool counter_exists = false;
+  int counter = 0;
+
+  esp_err_t counter_err = sd_card_file_exists("/counter.txt", &counter_exists);
+
+  if (counter_err == ESP_OK && counter_exists)
   {
-    snprintf(g_depth_log_filename, sizeof(g_depth_log_filename), "/depth_log_%04d.csv", file_num);
-    esp_err_t ret = sd_card_file_exists(g_depth_log_filename, &exists);
-    if (ret == ESP_OK && !exists)
-      break;
-    file_num++;
+
+    esp_err_t errr = sd_card_read_file(
+        "/counter.txt",
+        buffer,
+        sizeof(buffer) - 1,
+        &bytes_read);
+
+    if (errr == ESP_OK)
+    {
+      buffer[bytes_read] = '\0';
+
+      // Convert string to int
+      counter = atoi(buffer);
+      counter++; // increment counter
+    }
+    else
+    {
+      printf("Read failed: %d\n", errr);
+      write_to_sd = false;
+    }
+  }
+  else
+  {
+    // File does not exist → start counter at 1
+    counter = 1;
   }
 
-  printf("Logging to: %s\n", g_depth_log_filename);
-
-  // Open file using SD card API
-  g_depth_log_file = sd_card_fopen(g_depth_log_filename, "w");
-
-  if (g_depth_log_file == NULL)
+  // Write updated counter back to file
+  FILE *g_counter_file = sd_card_fopen("/counter.txt", "w");
+  if (g_counter_file)
   {
-    printf("Failed to open log file: %s\n", g_depth_log_filename);
-    return;
+    fprintf(g_counter_file, "%d", counter);
+    fclose(g_counter_file);
+  }
+  else
+  {
+    printf("Failed to open counter file for writing\n");
   }
 
-  // Write header
-  fprintf(g_depth_log_file, "# Depth Sensor Log\n");
-  fprintf(g_depth_log_file, "# Binning Factor: %d\n", BINNING_FACTOR);
-  fprintf(g_depth_log_file, "# Frame,Width,Height,Data...\n");
-  fflush(g_depth_log_file);
+  // Build filename from counter
+  snprintf(
+      g_depth_log_filename,
+      sizeof(g_depth_log_filename),
+      "/revised_log_%04d.csv",
+      counter);
+  if (write_to_sd)
+  {
+    printf("Logging to: %s\n", g_depth_log_filename);
+
+    // Create and open file
+    g_depth_log_file = sd_card_fopen(g_depth_log_filename, "w");
+    if (g_depth_log_file == NULL)
+    {
+      printf("Failed to open log file: %s\n", g_depth_log_filename);
+      return;
+    }
+
+    // Write header
+    fprintf(g_depth_log_file, "# Depth Sensor Log\n");
+    fprintf(g_depth_log_file, "# Binning Factor: %d\n", BINNING_FACTOR);
+    fprintf(g_depth_log_file, "# Frame,Width,Height,Data...\n");
+
+    fflush(g_depth_log_file);
+  }
 }
 
 // -------------------- Header Parsing --------------------
@@ -269,8 +318,11 @@ void depth_sensor_task()
   // printDepth();
 
   // Log to SD card
-  getDepthFrame(&frame);
-  appendDepthFrame(&frame);
+  if (write_to_sd)
+  {
+    getDepthFrame(&frame);
+    appendDepthFrame(&frame);
+  }
 }
 
 // -------------------- Frame Export --------------------
@@ -312,7 +364,7 @@ bool appendDepthFrame(const DepthFrame *frame)
   fprintf(g_depth_log_file, "\n");
 
   // Sync to disk every 500 frames for power loss protection
-  if (g_frame_counter % 500 == 0)
+  if (g_frame_counter % 20 == 0)
   {
     fflush(g_depth_log_file);
     fsync(fileno(g_depth_log_file));
