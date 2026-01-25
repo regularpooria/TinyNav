@@ -77,7 +77,7 @@ void depth_sensor_init()
   vTaskDelay(pdMS_TO_TICKS(5000));
 
   printf("Setting FPS\n");
-  const char *fps_cmd = "AT+FPS=7\r";
+  const char *fps_cmd = "AT+FPS=20\r";
   uart_write_bytes(UART_PORT_NUM, fps_cmd, strlen(fps_cmd));
   vTaskDelay(pdMS_TO_TICKS(5000));
 
@@ -397,7 +397,7 @@ bool appendDepthFrame(const DepthFrame *frame)
   }
   fprintf(g_depth_log_file, "\n");
 
-  // Sync to disk every 500 frames for power loss protection
+  // Sync to disk every 20 ~1s frames for power loss protection
   if (g_frame_counter % 20 == 0)
   {
     fflush(g_depth_log_file);
