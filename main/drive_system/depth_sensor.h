@@ -62,7 +62,7 @@ void depth_sensor_task();
 void depth_sensor_init();
 
 bool getPacket();
-void readHeader();
+bool readHeader();
 void processDepth();
 void printDepth();
 float toMillimeters(uint8_t pixelValue);

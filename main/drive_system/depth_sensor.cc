@@ -164,7 +164,7 @@ void depth_sensor_init()
 }
 
 // -------------------- Header Parsing --------------------
-void readHeader()
+bool readHeader()
 {
   FrameHeader header;
   memcpy(&header, rxBuffer, sizeof(FrameHeader));
@@ -176,10 +176,10 @@ void readHeader()
   if (imageRows > MAX_IMAGE_SIZE || imageCols > MAX_IMAGE_SIZE ||
       imageRows <= 0 || imageCols <= 0)
   {
-    printf("Warning: Invalid resolution %dx%d, using defaults\n", imageRows, imageCols);
-    imageRows = 25;
-    imageCols = 25;
+    printf("Warning: Invalid resolution %dx%d, dropping frame\n", imageRows, imageCols);
+    return false; // Invalid frame, drop it
   }
+  return true; // Valid frame
 }
 
 // -------------------- Depth Processing --------------------
@@ -313,7 +313,12 @@ void depth_sensor_task()
   {
     vTaskDelay(pdMS_TO_TICKS(1)); // Small delay to avoid hogging CPU
   }
-  readHeader();   // Create the header structure, sync rows and columns
+  
+  if (!readHeader()) // Create the header structure, sync rows and columns
+  {
+    return; // Drop frame if invalid resolution
+  }
+  
   processDepth(); // Convert raw bytes into mm and create 2D array depthMap
   // printDepth();
 
