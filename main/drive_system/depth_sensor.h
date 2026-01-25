@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "driver/uart.h"
+#include "WS2812FX.h"
 
 // -------------------- Configuration --------------------
 #define UART_PORT_NUM UART_NUM_2
@@ -58,7 +59,8 @@ extern FILE *g_depth_log_file;
 
 // -------------------- API --------------------
 // void depth_sensor_task(void *pvParameters);
-void depth_sensor_task();
+
+void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr);
 void depth_sensor_init();
 
 bool getPacket();

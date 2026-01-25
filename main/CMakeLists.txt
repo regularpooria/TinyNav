@@ -6,6 +6,7 @@ idf_component_register(
         constants.cc
         output_handler.cc
         model.cc
+        led_manager.cc
         drive_system/drive_system.cc
         drive_system/depth_sensor.cc
         sdcard/sd.cc

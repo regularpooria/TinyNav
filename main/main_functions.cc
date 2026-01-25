@@ -31,6 +31,7 @@ limitations under the License.
 
 // LED‌ stuff
 #include <WS2812FX.h>
+#include "led_manager.h"
 
 // Globals, used for compatibility with Arduino-style sketches.
 namespace
@@ -179,14 +180,22 @@ void setup_leds()
   fx->setMode(FX_MODE_BREATH);
   fx->setColor(YELLOW);
   fx->start();
+
+  // Initialize LED manager
+  led_manager_init(fx);
 }
 // The name of this function is important for Arduino compatibility.
 void loop()
 {
   // run_inference();
 
-  // Run LED stuff
-  drive_system_loop(fx);
+  // Run drive system and LED updates
+  drive_system_loop();
+
+  // Run depth sensor with shared channel values
+  depth_sensor_task(&steering_scaled, &throttle_scaled, &ch3_scaled);
+
+  // LED stuff
+  led_manager_update();
   fx->service();
-  depth_sensor_task();
 }

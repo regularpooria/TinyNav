@@ -8,11 +8,14 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "../sdcard/sd.h"
+#include <WS2812FX.h>
+#include "../led_manager.h"
 
 // -------------------- Constants --------------------
 #define FRAME_START_BYTE_1 0x00
 #define FRAME_START_BYTE_2 0xFF
 #define FRAME_END_BYTE 0xDD
+#define SD_CARD_COOLDOWN 50 // Ticks
 
 // -------------------- Globals --------------------
 int imageRows = 25;
@@ -28,7 +31,9 @@ uint8_t rxBuffer[BUFFER_SIZE];
 static char g_depth_log_filename[64];
 int g_frame_counter = 0;
 FILE *g_depth_log_file = NULL;
-bool write_to_sd = true;
+short write_to_sd = 0;
+
+int sd_card_cooldown = 0;
 
 // -------------------- Initialization --------------------
 void depth_sensor_init()
@@ -84,10 +89,6 @@ void depth_sensor_init()
 
   printf("SENSOR READY\n");
 
-  // Find next available log file number
-  int file_num = 1;
-  bool exists = false;
-
   char buffer[256];
   size_t bytes_read = 0;
   bool counter_exists = false;
@@ -115,7 +116,7 @@ void depth_sensor_init()
     else
     {
       printf("Read failed: %d\n", errr);
-      write_to_sd = false;
+      write_to_sd = -1;
     }
   }
   else
@@ -142,7 +143,7 @@ void depth_sensor_init()
       sizeof(g_depth_log_filename),
       "/revised_log_%04d.csv",
       counter);
-  if (write_to_sd)
+  if (write_to_sd == 1)
   {
     printf("Logging to: %s\n", g_depth_log_filename);
 
@@ -305,7 +306,7 @@ void fullPrint()
 }
 
 // -------------------- Main Task --------------------
-void depth_sensor_task()
+void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
 {
   static DepthFrame frame; // Static to avoid stack overflow
 
@@ -313,20 +314,48 @@ void depth_sensor_task()
   {
     vTaskDelay(pdMS_TO_TICKS(1)); // Small delay to avoid hogging CPU
   }
-  
+
   if (!readHeader()) // Create the header structure, sync rows and columns
   {
     return; // Drop frame if invalid resolution
   }
-  
   processDepth(); // Convert raw bytes into mm and create 2D array depthMap
   // printDepth();
 
   // Log to SD card
-  if (write_to_sd)
+
+  if (write_to_sd != -1 && *ch3_ptr >= 0.5 && sd_card_cooldown == 0)
+  {
+    if (write_to_sd == 1)
+    {
+
+      write_to_sd = 0;
+      sd_card_cooldown = SD_CARD_COOLDOWN;
+      printf("Stopped writing to SD");
+      led_manager_set(LED_PRIORITY_HIGH, FX_MODE_STATIC, GREEN, 0, 2000); // 2 second flash
+    }
+    else
+    {
+      write_to_sd = 1;
+      sd_card_cooldown = SD_CARD_COOLDOWN;
+      printf("Started writing to SD");
+      led_manager_set(LED_PRIORITY_HIGH, FX_MODE_BLINK, PURPLE, 500, 0); // Blink while recording
+    }
+  }
+  else if (write_to_sd == -1 && *ch3_ptr >= 0.5)
+  {
+    printf("The SD card is not initialized to turn on logging");
+    led_manager_set(LED_PRIORITY_CRITICAL, FX_MODE_BLINK, RED, 200, 3000); // Fast red blink for error
+  }
+
+  if (write_to_sd == 1)
   {
     getDepthFrame(&frame);
     appendDepthFrame(&frame);
+  }
+  if (sd_card_cooldown > 0)
+  {
+    sd_card_cooldown = sd_card_cooldown - 1;
   }
 }
 
