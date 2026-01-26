@@ -28,7 +28,7 @@ static int bufferIndex = 0;
 float depthMap[MAX_IMAGE_SIZE][MAX_IMAGE_SIZE];
 uint8_t rxBuffer[BUFFER_SIZE];
 
-static char g_depth_log_filename[64];
+char g_depth_log_filename[64];
 int g_frame_counter = 0;
 FILE *g_depth_log_file = NULL;
 short write_to_sd = 0;
@@ -143,7 +143,7 @@ void depth_sensor_init()
       sizeof(g_depth_log_filename),
       "/revised_log_%04d.csv",
       counter);
-  if (write_to_sd == 1)
+  if (write_to_sd != -1)
   {
     printf("Logging to: %s\n", g_depth_log_filename);
 
@@ -152,6 +152,8 @@ void depth_sensor_init()
     if (g_depth_log_file == NULL)
     {
       printf("Failed to open log file: %s\n", g_depth_log_filename);
+      write_to_sd = -1;
+      printf("Initial mode: Error - SD card not available (toggle with CH3)\n");
       return;
     }
 
@@ -161,6 +163,11 @@ void depth_sensor_init()
     fprintf(g_depth_log_file, "# Frame,Width,Height,Data...\n");
 
     fflush(g_depth_log_file);
+    printf("Initial mode: Off (cycle modes with CH3: Off -> Serial -> SD -> Off)\n");
+  }
+  else
+  {
+    printf("Initial mode: Error - SD card not available (toggle with CH3 for serial print)\n");
   }
 }
 
@@ -177,7 +184,7 @@ bool readHeader()
   if (imageRows > MAX_IMAGE_SIZE || imageCols > MAX_IMAGE_SIZE ||
       imageRows <= 0 || imageCols <= 0)
   {
-    printf("Warning: Invalid resolution %dx%d, dropping frame\n", imageRows, imageCols);
+    // printf("Warning: Invalid resolution %dx%d, dropping frame\n", imageRows, imageCols);
     return false; // Invalid frame, drop it
   }
   return true; // Valid frame
@@ -219,18 +226,42 @@ float toMillimeters(uint8_t pixelValue)
 }
 
 // -------------------- Print --------------------
-void printDepth()
+const char depthChars[] = " .:-=+*#%@";
+const int NUM_CHARS = sizeof(depthChars) - 1;
+
+float minDepth = 50.0f;   // mm
+float maxDepth = 1000.0f; // mm
+void printDepthAscii()
 {
-  printf("----- DEPTH DATA (mm) -----\n");
+  printf("FRAME_START\n");
+  fflush(stdout);
 
   for (int i = 0; i < imageRows; i++)
   {
     for (int j = 0; j < imageCols; j++)
     {
-      printf("%.0f\t", depthMap[i][j]);
+      float d = depthMap[i][j];
+
+      if (d < minDepth)
+        d = minDepth;
+      if (d > maxDepth)
+        d = maxDepth;
+
+      float norm = (d - minDepth) / (maxDepth - minDepth);
+      int idx = (int)(norm * (NUM_CHARS - 1));
+
+      if (idx < 0)
+        idx = 0;
+      if (idx >= NUM_CHARS)
+        idx = NUM_CHARS - 1;
+
+      putchar(depthChars[idx]);
     }
-    printf("\n");
+    putchar('\n');
   }
+
+  printf("FRAME_END\n");
+  fflush(stdout);
 }
 
 // -------------------- Packet Reception --------------------
@@ -309,6 +340,7 @@ void fullPrint()
 void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
 {
   static DepthFrame frame; // Static to avoid stack overflow
+  static float prev_ch3 = 0.0; // Track previous CH3 value for edge detection
 
   while (!getPacket()) // Keep reading until full packet received
   {
@@ -320,39 +352,69 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
     return; // Drop frame if invalid resolution
   }
   processDepth(); // Convert raw bytes into mm and create 2D array depthMap
-  // printDepth();
 
-  // Log to SD card
-
-  if (write_to_sd != -1 && *ch3_ptr >= 0.5 && sd_card_cooldown == 0)
+  // Mode cycling with CH3 button (edge detection: rising edge when ch3 goes from <0.5 to >=0.5)
+  if (*ch3_ptr >= 0.5 && prev_ch3 < 0.5 && sd_card_cooldown == 0)
   {
-    if (write_to_sd == 1)
+    if (write_to_sd == -1)
     {
-
-      write_to_sd = 0;
+      // SD card error: toggle between -1 (error/off) and 1 (serial print)
+      write_to_sd = 1;
       sd_card_cooldown = SD_CARD_COOLDOWN;
-      printf("Stopped writing to SD");
-      led_manager_set(LED_PRIORITY_HIGH, FX_MODE_STATIC, GREEN, 0, 2000); // 2 second flash
+      printf("Mode: Serial print (SD card not available)\n");
+      led_manager_set(LED_PRIORITY_HIGH, FX_MODE_STATIC, YELLOW, 0, 2000);
+    }
+    else if (write_to_sd == 1)
+    {
+      // If in serial mode and from error state, go back to error state
+      // Otherwise try to go to SD mode
+      if (g_depth_log_file == NULL)
+      {
+        write_to_sd = -1;
+        sd_card_cooldown = SD_CARD_COOLDOWN;
+        printf("Mode: Off (SD card not available)\n");
+        led_manager_set(LED_PRIORITY_HIGH, FX_MODE_STATIC, RED, 0, 2000);
+      }
+      else
+      {
+        write_to_sd = 2;
+        sd_card_cooldown = SD_CARD_COOLDOWN;
+        printf("Mode: Writing to SD card\n");
+        led_manager_set(LED_PRIORITY_HIGH, FX_MODE_BLINK, PURPLE, 500, 0); // Blink while recording
+      }
     }
     else
     {
-      write_to_sd = 1;
+      // From mode 0 or 2, cycle to next
+      write_to_sd = (write_to_sd + 1) % 3;
       sd_card_cooldown = SD_CARD_COOLDOWN;
-      printf("Started writing to SD");
-      led_manager_set(LED_PRIORITY_HIGH, FX_MODE_BLINK, PURPLE, 500, 0); // Blink while recording
+      
+      if (write_to_sd == 0)
+      {
+        printf("Mode: Off (no output)\n");
+        led_manager_set(LED_PRIORITY_HIGH, FX_MODE_STATIC, GREEN, 0, 2000);
+      }
+      else if (write_to_sd == 1)
+      {
+        printf("Mode: Serial print\n");
+        led_manager_set(LED_PRIORITY_HIGH, FX_MODE_STATIC, BLUE, 0, 2000);
+      }
     }
   }
-  else if (write_to_sd == -1 && *ch3_ptr >= 0.5)
-  {
-    printf("The SD card is not initialized to turn on logging");
-    led_manager_set(LED_PRIORITY_CRITICAL, FX_MODE_BLINK, RED, 200, 3000); // Fast red blink for error
-  }
 
+  prev_ch3 = *ch3_ptr; // Update previous value
+
+  // Execute based on current mode
   if (write_to_sd == 1)
   {
-    getDepthFrame(&frame);
-    appendDepthFrame(&frame);
+    printDepthAscii(); // Print to serial
   }
+  else if (write_to_sd == 2)
+  {
+    appendDepthFrame(); // Write to SD card
+  }
+
+  // Decrement cooldown
   if (sd_card_cooldown > 0)
   {
     sd_card_cooldown = sd_card_cooldown - 1;
@@ -360,44 +422,27 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
 }
 
 // -------------------- Frame Export --------------------
-void getDepthFrame(DepthFrame *frame)
+bool appendDepthFrame()
 {
-  if (frame == NULL)
-    return;
+  if (g_depth_log_file == NULL)
+    return false;
 
-  frame->width = imageCols;
-  frame->height = imageRows;
-  frame->binning_factor = BINNING_FACTOR;
+  // Write frame header: frame number, width, height
+  fprintf(g_depth_log_file, "%d,%d,%d", g_frame_counter++, imageCols, imageRows);
 
-  // Copy depth data
+  // Write depth data row by row
   for (int i = 0; i < imageRows; i++)
   {
     for (int j = 0; j < imageCols; j++)
     {
-      frame->data[i][j] = depthMap[i][j];
+      fprintf(g_depth_log_file, ",%.1f", depthMap[i][j]);
     }
   }
-}
 
-bool appendDepthFrame(const DepthFrame *frame)
-{
-  if (frame == NULL || g_depth_log_file == NULL)
-    return false;
-
-  // Write frame header directly
-  fprintf(g_depth_log_file, "%d,%d,%d", g_frame_counter++, frame->width, frame->height);
-
-  // Write depth data row by row to avoid huge buffer
-  for (int i = 0; i < frame->height; i++)
-  {
-    for (int j = 0; j < frame->width; j++)
-    {
-      fprintf(g_depth_log_file, ",%.1f", frame->data[i][j]);
-    }
-  }
+  // End the line for this frame
   fprintf(g_depth_log_file, "\n");
 
-  // Sync to disk every 20 ~1s frames for power loss protection
+  // Flush every 20 frames to reduce SD card corruption risk
   if (g_frame_counter % 20 == 0)
   {
     fflush(g_depth_log_file);

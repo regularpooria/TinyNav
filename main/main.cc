@@ -20,6 +20,7 @@ limitations under the License.
 
 extern "C" void app_main(void)
 {
+  setvbuf(stdout, NULL, _IONBF, 0);
   setup();
   while (true)
   {

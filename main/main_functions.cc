@@ -33,6 +33,9 @@ limitations under the License.
 #include <WS2812FX.h>
 #include "led_manager.h"
 
+// Serial commands
+#include "serial_commands.h"
+
 // Globals, used for compatibility with Arduino-style sketches.
 namespace
 {
@@ -72,6 +75,7 @@ void setup()
   depth_sensor_init();
   drive_system_setup();
   setup_leds();
+  serial_commands_init();
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
   model = tflite::GetModel(g_model);
@@ -198,4 +202,7 @@ void loop()
   // LED stuff
   led_manager_update();
   fx->service();
+  
+  // Process serial commands
+  serial_commands_process();
 }

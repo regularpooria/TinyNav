@@ -8,9 +8,9 @@ from matplotlib.animation import FuncAnimation
 from tqdm import tqdm
 
 # --- Parameters ---
-FPS = 7
+FPS = 20
 FRAME_DT_MS = 1000 / FPS
-csv_path = "depth_log_0013.csv"
+csv_path = "logs/revised_log_0029_20260126_010822.csv"
 
 # --- Load CSV ---
 df = pd.read_csv(csv_path, comment="#", header=None)

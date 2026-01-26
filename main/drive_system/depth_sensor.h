@@ -56,6 +56,7 @@ extern uint8_t rxBuffer[BUFFER_SIZE];
 
 extern int g_frame_counter;
 extern FILE *g_depth_log_file;
+extern char g_depth_log_filename[64];
 
 // -------------------- API --------------------
 // void depth_sensor_task(void *pvParameters);
@@ -66,9 +67,9 @@ void depth_sensor_init();
 bool getPacket();
 bool readHeader();
 void processDepth();
-void printDepth();
+void printDepthAscii();
+void printDepthSerial();
 float toMillimeters(uint8_t pixelValue);
 void fullPrint();
 
-void getDepthFrame(DepthFrame *frame);
-bool appendDepthFrame(const DepthFrame *frame);
+bool appendDepthFrame();
