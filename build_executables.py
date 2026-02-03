@@ -51,11 +51,14 @@ def build_executable(script_name, onefile=True, console=True, hidden_imports=Non
         return False
 
 def main():
-    os.chdir('/workspaces/tinynav')
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
     
     print("Building executables for Python scripts...")
     print(f"Platform: {platform.system()}")
     print(f"Architecture: {platform.machine()}")
+    print(f"Working directory: {os.getcwd()}")
     
     # Build visualize.py
     build_executable(
