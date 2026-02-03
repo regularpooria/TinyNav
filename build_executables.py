@@ -7,6 +7,15 @@ import sys
 import os
 import platform
 
+# Force UTF-8 encoding for output (helps with Windows)
+if sys.platform == 'win32':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except AttributeError:
+        # Python < 3.7
+        import codecs
+        sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer, 'strict')
+
 def build_executable(script_name, onefile=True, console=True, hidden_imports=None):
     """Build an executable using PyInstaller"""
     print(f"\n{'='*60}")
@@ -44,10 +53,10 @@ def build_executable(script_name, onefile=True, console=True, hidden_imports=Non
     
     try:
         result = subprocess.run(cmd, check=True, capture_output=False)
-        print(f"✓ Successfully built {name}")
+        print(f"[OK] Successfully built {name}")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"✗ Failed to build {script_name}: {e}")
+        print(f"[FAIL] Failed to build {script_name}: {e}")
         return False
 
 def main():
