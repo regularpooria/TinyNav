@@ -72,4 +72,4 @@ void printDepthSerial();
 float toMillimeters(uint8_t pixelValue);
 void fullPrint();
 
-bool appendDepthFrame();
+bool appendDepthFrame(float steering, float throttle);

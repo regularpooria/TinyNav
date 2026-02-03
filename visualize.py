@@ -8,9 +8,9 @@ from matplotlib.animation import FuncAnimation
 from tqdm import tqdm
 
 # --- Parameters ---
-FPS = 20
+FPS = 15
 FRAME_DT_MS = 1000 / FPS
-csv_path = "logs/revised_log_0029_20260126_010822.csv"
+csv_path = "revised_log_0053.csv"
 
 # --- Load CSV ---
 df = pd.read_csv(csv_path, comment="#", header=None)
@@ -19,9 +19,9 @@ df = pd.read_csv(csv_path, comment="#", header=None)
 frames = []
 
 for _, row in df.iterrows():
-    w = int(row.iloc[1])
-    h = int(row.iloc[2])
-    data = row.iloc[3:].to_numpy(dtype=np.float32)
+    w = int(row.iloc[3])
+    h = int(row.iloc[4])
+    data = row.iloc[5:].to_numpy(dtype=np.float32)
     frames.append(data.reshape((h, w)))
 
 frames = np.stack(frames)
@@ -32,8 +32,8 @@ fig, ax = plt.subplots(figsize=(4, 4))
 im = ax.imshow(
     frames[0],
     cmap="viridis",
-    vmin=frames.min(),
-    vmax=frames.max(),
+    vmin=100,
+    vmax=2000,
     animated=False
 )
 
