@@ -6,14 +6,51 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from tqdm import tqdm
+import argparse
+import sys
+
+# --- Parse command-line arguments ---
+parser = argparse.ArgumentParser(
+    description='Create GIF animation from CSV depth log files',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument('csv_file', nargs='?', default='revised_log_0053.csv',
+                    help='Input CSV file path')
+parser.add_argument('-o', '--output', default='depth_animation.gif',
+                    help='Output file path (GIF format)')
+parser.add_argument('-f', '--fps', type=int, default=15,
+                    help='Frames per second')
+parser.add_argument('--dpi', type=int, default=80,
+                    help='Output DPI (higher = better quality but slower)')
+parser.add_argument('--vmin', type=int, default=100,
+                    help='Minimum depth value for colormap')
+parser.add_argument('--vmax', type=int, default=2000,
+                    help='Maximum depth value for colormap')
+parser.add_argument('--cmap', default='viridis',
+                    help='Matplotlib colormap name')
+
+args = parser.parse_args()
+
+# Validate output format
+if not args.output.lower().endswith('.gif'):
+    print("WARNING: Pillow writer only supports GIF format.")
+    print(f"Changing output from '{args.output}' to '{args.output.rsplit('.', 1)[0]}.gif'")
+    args.output = args.output.rsplit('.', 1)[0] + '.gif'
 
 # --- Parameters ---
-FPS = 15
+FPS = args.fps
 FRAME_DT_MS = 1000 / FPS
-csv_path = "revised_log_0053.csv"
+csv_path = args.csv_file
 
 # --- Load CSV ---
-df = pd.read_csv(csv_path, comment="#", header=None)
+try:
+    df = pd.read_csv(csv_path, comment="#", header=None)
+except FileNotFoundError:
+    print(f"ERROR: File not found: {csv_path}")
+    sys.exit(1)
+except Exception as e:
+    print(f"ERROR: Failed to read CSV: {e}")
+    sys.exit(1)
 
 # --- Parse frames ---
 frames = []
@@ -31,9 +68,9 @@ num_frames = len(frames)
 fig, ax = plt.subplots(figsize=(4, 4))
 im = ax.imshow(
     frames[0],
-    cmap="viridis",
-    vmin=100,
-    vmax=2000,
+    cmap=args.cmap,
+    vmin=args.vmin,
+    vmax=args.vmax,
     animated=False
 )
 
@@ -67,18 +104,17 @@ pbar = tqdm(total=num_frames, desc="Encoding")
 def progress_callback(i, total):
     pbar.update(1)
 
-# --- Save (FAST SETTINGS) ---
+# --- Save using Pillow writer (GIF format only) ---
+print(f"Saving animation to {args.output}...")
+print("Note: Using Pillow writer (GIF format). For MP4, use ffmpeg.")
+
 ani.save(
-    "depth_animation.mp4",
-    writer="ffmpeg",
+    args.output,
+    writer="pillow",
     fps=FPS,
-    dpi=80,                    # BIG speedup vs default 150+
-    codec="libx264",
-    extra_args=[
-        "-preset", "ultrafast",  # fastest encode
-        "-pix_fmt", "yuv420p"
-    ],
+    dpi=args.dpi,
     progress_callback=progress_callback
 )
 
 pbar.close()
+print(f"✓ Animation saved to {args.output}")

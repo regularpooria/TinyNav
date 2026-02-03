@@ -1,16 +1,44 @@
 import serial
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
+import sys
 
-PORT = "/dev/ttyACM0"
-BAUD = 921600
-ROWS = 25
-COLS = 25
+# --- Parse command-line arguments ---
+parser = argparse.ArgumentParser(
+    description='Real-time visualization of ESP32 depth data via serial',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument('-p', '--port', default='/dev/ttyACM0',
+                    help='Serial port (e.g., /dev/ttyACM0, COM3)')
+parser.add_argument('-b', '--baud', type=int, default=921600,
+                    help='Baud rate')
+parser.add_argument('-r', '--rows', type=int, default=25,
+                    help='Number of rows in depth grid')
+parser.add_argument('-c', '--cols', type=int, default=25,
+                    help='Number of columns in depth grid')
+parser.add_argument('--cmap', default='inferno',
+                    help='Matplotlib colormap name')
+parser.add_argument('--timeout', type=float, default=1.0,
+                    help='Serial read timeout in seconds')
+
+args = parser.parse_args()
+
+PORT = args.port
+BAUD = args.baud
+ROWS = args.rows
+COLS = args.cols
 
 DEPTH_CHARS = " .:-=+*#%@"
 CHAR_TO_VALUE = {c: i for i, c in enumerate(DEPTH_CHARS)}
 
-ser = serial.Serial(PORT, BAUD, timeout=1)
+try:
+    ser = serial.Serial(PORT, BAUD, timeout=args.timeout)
+    print(f"Connected to {PORT} at {BAUD} baud")
+except serial.SerialException as e:
+    print(f"ERROR: Could not open serial port {PORT}: {e}")
+    sys.exit(1)
+
 def read_frame():
     rows = []
 
@@ -41,14 +69,21 @@ def main():
     plt.ion()
     frame = np.zeros((ROWS, COLS))
 
-    img = plt.imshow(frame, cmap="inferno", vmin=0, vmax=len(DEPTH_CHARS) - 1)
+    img = plt.imshow(frame, cmap=args.cmap, vmin=0, vmax=len(DEPTH_CHARS) - 1)
     plt.colorbar(label="Relative depth")
+    plt.title(f"Depth Visualization - {PORT} @ {BAUD} baud")
     plt.axis("off")
 
-    while True:
-        frame = read_frame()
-        img.set_data(frame)
-        plt.pause(0.001)
+    print("Receiving data... (Press Ctrl+C to stop)")
+    try:
+        while True:
+            frame = read_frame()
+            img.set_data(frame)
+            plt.pause(0.001)
+    except KeyboardInterrupt:
+        print("\nStopped by user")
+        ser.close()
+        sys.exit(0)
 
 
 if __name__ == "__main__":

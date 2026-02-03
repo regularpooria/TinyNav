@@ -1,0 +1,286 @@
+36 INFO: PyInstaller: 6.18.0, contrib hooks: 2026.0
+36 INFO: Python: 3.12.3
+37 INFO: Platform: Linux-6.17.13-200.fc42.x86_64-x86_64-with-glibc2.39
+37 INFO: Python environment: /opt/esp/python_env/idf6.0_py3.12_env
+37 INFO: wrote /workspaces/tinynav/visualize.spec
+38 INFO: Removing temporary files and cleaning cache in /root/.cache/pyinstaller
+39 INFO: Module search paths (PYTHONPATH):
+['/workspaces/tinynav',
+ '/usr/lib/python312.zip',
+ '/usr/lib/python3.12',
+ '/usr/lib/python3.12/lib-dynload',
+ '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages',
+ '/workspaces/tinynav']
+284 INFO: checking Analysis
+284 INFO: Building Analysis because Analysis-00.toc is non existent
+284 INFO: Looking for Python shared library...
+293 INFO: Using Python shared library: /lib/x86_64-linux-gnu/libpython3.12.so.1.0
+293 INFO: Running Analysis Analysis-00.toc
+293 INFO: Target bytecode optimization level: 0
+293 INFO: Initializing module dependency graph...
+294 INFO: Initializing module graph hook caches...
+300 INFO: Analyzing modules for base_library.zip ...
+580 INFO: Processing standard module hook 'hook-encodings.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+1744 INFO: Processing standard module hook 'hook-pickle.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+2482 INFO: Processing standard module hook 'hook-heapq.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+2719 INFO: Caching module dependency graph...
+2743 INFO: Analyzing /workspaces/tinynav/visualize.py
+2754 INFO: Processing standard module hook 'hook-numpy.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+3088 INFO: Processing standard module hook 'hook-difflib.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+3249 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+3354 INFO: Processing standard module hook 'hook-xml.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+3513 INFO: Processing standard module hook 'hook-_ctypes.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+3960 INFO: Processing standard module hook 'hook-sysconfig.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+4015 INFO: Processing standard module hook 'hook-platform.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+4332 INFO: Processing standard module hook 'hook-psutil.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+4915 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+4915 INFO: SetuptoolsInfo: initializing cached setuptools info...
+7392 INFO: Processing standard module hook 'hook-charset_normalizer.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+7570 INFO: Processing standard module hook 'hook-pandas.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+8367 INFO: Processing standard module hook 'hook-zoneinfo.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+9248 INFO: Processing standard module hook 'hook-pandas.io.formats.style.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+10584 INFO: Processing standard module hook 'hook-pandas.plotting.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+10616 INFO: Processing standard module hook 'hook-matplotlib.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+10913 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+10965 INFO: Processing pre-safe-import-module hook 'hook-gi.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+11141 INFO: Processing standard module hook 'hook-matplotlib.backend_bases.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+11230 INFO: Processing standard module hook 'hook-PIL.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+11301 INFO: Processing standard module hook 'hook-PIL.Image.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+11445 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+11555 INFO: Processing standard module hook 'hook-PIL.ImageFilter.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+12197 INFO: Processing standard module hook 'hook-matplotlib.backends.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+12256 INFO: Processing standard module hook 'hook-matplotlib.pyplot.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+12827 INFO: Processing standard module hook 'hook-dateutil.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+12869 INFO: Processing pre-safe-import-module hook 'hook-six.moves.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+13745 INFO: Processing standard module hook 'hook-certifi.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+14835 INFO: Processing standard module hook 'hook-sqlite3.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+14962 INFO: Processing standard module hook 'hook-pandas.io.clipboard.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+15045 INFO: Processing standard module hook 'hook-xml.dom.domreg.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+15420 INFO: Processing pre-safe-import-module hook 'hook-importlib_resources.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+15431 INFO: Processing module hooks (post-graph stage)...
+15646 INFO: Processing standard module hook 'hook-PIL.SpiderImagePlugin.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+15678 INFO: Processing standard module hook 'hook-matplotlib.backends.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+15678 INFO: Matplotlib backend selection method: automatic discovery of used backends
+15691 INFO: Discovered Matplotlib backend(s) via `matplotlib.use()` call in module '/workspaces/tinynav/visualize.py': ['Agg']
+15691 INFO: The following Matplotlib backends were discovered by scanning for `matplotlib.use()` calls: ['Agg']. If your backend of choice is not in this list, either add a `matplotlib.use()` call to your code, or configure the backend collection via hook options (see: https://pyinstaller.org/en/stable/hooks-config.html#matplotlib-hooks).
+15691 INFO: Selected matplotlib backends: ['Agg']
+15846 INFO: Performing binary vs. data reclassification (211 entries)
+15886 INFO: Looking for ctypes DLLs
+15916 WARNING: Library user32 required via ctypes not found
+15931 WARNING: Library msvcrt required via ctypes not found
+15948 INFO: Analyzing run-time hooks ...
+15954 INFO: Including run-time hook 'pyi_rth_inspect.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+15955 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+15956 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+15958 INFO: Including run-time hook 'pyi_rth_mplconfig.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+15958 INFO: Processing pre-find-module-path hook 'hook-_pyi_rth_utils.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_find_module_path'
+15959 INFO: Processing standard module hook 'hook-_pyi_rth_utils.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+15975 INFO: Creating base_library.zip...
+15990 INFO: Looking for dynamic libraries
+16723 INFO: Warnings written to /workspaces/tinynav/build/visualize/warn-visualize.txt
+16768 INFO: Graph cross-reference written to /workspaces/tinynav/build/visualize/xref-visualize.html
+16789 INFO: checking PYZ
+16789 INFO: Building PYZ because PYZ-00.toc is non existent
+16789 INFO: Building PYZ (ZlibArchive) /workspaces/tinynav/build/visualize/PYZ-00.pyz
+17620 INFO: Building PYZ (ZlibArchive) /workspaces/tinynav/build/visualize/PYZ-00.pyz completed successfully.
+17639 INFO: checking PKG
+17639 INFO: Building PKG because PKG-00.toc is non existent
+17639 INFO: Building PKG (CArchive) visualize.pkg
+28680 INFO: Building PKG (CArchive) visualize.pkg completed successfully.
+28684 INFO: Bootloader /opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/bootloader/Linux-64bit-intel/run
+28684 INFO: checking EXE
+28684 INFO: Building EXE because EXE-00.toc is non existent
+28684 INFO: Building EXE from EXE-00.toc
+28684 INFO: Copying bootloader EXE to /workspaces/tinynav/dist/visualize
+28684 INFO: Appending PKG archive to custom ELF section in EXE
+28797 INFO: Building EXE from EXE-00.toc completed successfully.
+28801 INFO: Build complete! The results are available in: /workspaces/tinynav/dist
+30 INFO: PyInstaller: 6.18.0, contrib hooks: 2026.0
+30 INFO: Python: 3.12.3
+31 INFO: Platform: Linux-6.17.13-200.fc42.x86_64-x86_64-with-glibc2.39
+31 INFO: Python environment: /opt/esp/python_env/idf6.0_py3.12_env
+31 INFO: wrote /workspaces/tinynav/download_log.spec
+33 INFO: Removing temporary files and cleaning cache in /root/.cache/pyinstaller
+33 INFO: Module search paths (PYTHONPATH):
+['/workspaces/tinynav',
+ '/usr/lib/python312.zip',
+ '/usr/lib/python3.12',
+ '/usr/lib/python3.12/lib-dynload',
+ '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages',
+ '/workspaces/tinynav']
+232 INFO: checking Analysis
+232 INFO: Building Analysis because Analysis-00.toc is non existent
+232 INFO: Looking for Python shared library...
+240 INFO: Using Python shared library: /lib/x86_64-linux-gnu/libpython3.12.so.1.0
+240 INFO: Running Analysis Analysis-00.toc
+240 INFO: Target bytecode optimization level: 0
+240 INFO: Initializing module dependency graph...
+240 INFO: Initializing module graph hook caches...
+245 INFO: Analyzing modules for base_library.zip ...
+766 INFO: Processing standard module hook 'hook-encodings.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+1090 INFO: Processing standard module hook 'hook-heapq.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+1706 INFO: Processing standard module hook 'hook-pickle.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+2735 INFO: Caching module dependency graph...
+2760 INFO: Analyzing /workspaces/tinynav/download_log.py
+2818 INFO: Processing standard module hook 'hook-_ctypes.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+2860 INFO: Analyzing hidden import 'serial.tools'
+2861 INFO: Analyzing hidden import 'serial.tools.list_ports'
+2893 INFO: Processing module hooks (post-graph stage)...
+2898 INFO: Performing binary vs. data reclassification (1 entries)
+2901 INFO: Looking for ctypes DLLs
+2931 WARNING: Library Cfgmgr32 required via ctypes not found
+2944 WARNING: Library Advapi32 required via ctypes not found
+2954 WARNING: Library setupapi required via ctypes not found
+2955 WARNING: Ignoring /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation imported from /opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/serial/tools/list_ports_osx.py - only basenames are supported with ctypes imports!
+2955 WARNING: Ignoring /System/Library/Frameworks/IOKit.framework/IOKit imported from /opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/serial/tools/list_ports_osx.py - only basenames are supported with ctypes imports!
+2958 INFO: Analyzing run-time hooks ...
+2958 INFO: Including run-time hook 'pyi_rth_inspect.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+2963 INFO: Creating base_library.zip...
+2975 INFO: Looking for dynamic libraries
+3101 INFO: Warnings written to /workspaces/tinynav/build/download_log/warn-download_log.txt
+3107 INFO: Graph cross-reference written to /workspaces/tinynav/build/download_log/xref-download_log.html
+3114 INFO: checking PYZ
+3114 INFO: Building PYZ because PYZ-00.toc is non existent
+3114 INFO: Building PYZ (ZlibArchive) /workspaces/tinynav/build/download_log/PYZ-00.pyz
+3213 INFO: Building PYZ (ZlibArchive) /workspaces/tinynav/build/download_log/PYZ-00.pyz completed successfully.
+3221 INFO: checking PKG
+3221 INFO: Building PKG because PKG-00.toc is non existent
+3221 INFO: Building PKG (CArchive) download_log.pkg
+5300 INFO: Building PKG (CArchive) download_log.pkg completed successfully.
+5301 INFO: Bootloader /opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/bootloader/Linux-64bit-intel/run
+5301 INFO: checking EXE
+5301 INFO: Building EXE because EXE-00.toc is non existent
+5301 INFO: Building EXE from EXE-00.toc
+5302 INFO: Copying bootloader EXE to /workspaces/tinynav/dist/download_log
+5302 INFO: Appending PKG archive to custom ELF section in EXE
+5329 INFO: Building EXE from EXE-00.toc completed successfully.
+5329 INFO: Build complete! The results are available in: /workspaces/tinynav/dist
+28 INFO: PyInstaller: 6.18.0, contrib hooks: 2026.0
+28 INFO: Python: 3.12.3
+29 INFO: Platform: Linux-6.17.13-200.fc42.x86_64-x86_64-with-glibc2.39
+29 INFO: Python environment: /opt/esp/python_env/idf6.0_py3.12_env
+29 INFO: wrote /workspaces/tinynav/read_serial.spec
+30 INFO: Removing temporary files and cleaning cache in /root/.cache/pyinstaller
+31 INFO: Module search paths (PYTHONPATH):
+['/workspaces/tinynav',
+ '/usr/lib/python312.zip',
+ '/usr/lib/python3.12',
+ '/usr/lib/python3.12/lib-dynload',
+ '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages',
+ '/workspaces/tinynav']
+190 INFO: checking Analysis
+190 INFO: Building Analysis because Analysis-00.toc is non existent
+190 INFO: Looking for Python shared library...
+198 INFO: Using Python shared library: /lib/x86_64-linux-gnu/libpython3.12.so.1.0
+198 INFO: Running Analysis Analysis-00.toc
+198 INFO: Target bytecode optimization level: 0
+198 INFO: Initializing module dependency graph...
+198 INFO: Initializing module graph hook caches...
+204 INFO: Analyzing modules for base_library.zip ...
+640 INFO: Processing standard module hook 'hook-encodings.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+1563 INFO: Processing standard module hook 'hook-pickle.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+2148 INFO: Processing standard module hook 'hook-heapq.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+2400 INFO: Caching module dependency graph...
+2424 INFO: Analyzing /workspaces/tinynav/read_serial.py
+2460 INFO: Processing standard module hook 'hook-_ctypes.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+2503 INFO: Processing standard module hook 'hook-numpy.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+2812 INFO: Processing standard module hook 'hook-difflib.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+2966 INFO: Processing standard module hook 'hook-multiprocessing.util.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+3064 INFO: Processing standard module hook 'hook-xml.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+3639 INFO: Processing standard module hook 'hook-sysconfig.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+3691 INFO: Processing standard module hook 'hook-platform.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+4016 INFO: Processing standard module hook 'hook-psutil.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+4601 INFO: Processing pre-safe-import-module hook 'hook-typing_extensions.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+4601 INFO: SetuptoolsInfo: initializing cached setuptools info...
+7226 INFO: Processing standard module hook 'hook-charset_normalizer.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+7429 INFO: Processing standard module hook 'hook-matplotlib.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+7628 INFO: Processing pre-safe-import-module hook 'hook-packaging.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+7686 INFO: Processing pre-safe-import-module hook 'hook-gi.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+7858 INFO: Processing standard module hook 'hook-matplotlib.backend_bases.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+7944 INFO: Processing standard module hook 'hook-PIL.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+8003 INFO: Processing standard module hook 'hook-PIL.Image.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+8168 INFO: Processing standard module hook 'hook-xml.etree.cElementTree.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+8279 INFO: Processing standard module hook 'hook-PIL.ImageFilter.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+8850 INFO: Processing standard module hook 'hook-matplotlib.backends.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+8914 INFO: Processing standard module hook 'hook-matplotlib.pyplot.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+9477 INFO: Processing standard module hook 'hook-dateutil.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+9524 INFO: Processing pre-safe-import-module hook 'hook-six.moves.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_safe_import_module'
+10367 INFO: Processing standard module hook 'hook-certifi.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/_pyinstaller_hooks_contrib/stdhooks'
+10370 INFO: Analyzing hidden import 'serial.tools'
+10370 INFO: Analyzing hidden import 'serial.tools.list_ports'
+10392 INFO: Analyzing hidden import 'matplotlib.backends.backend_tkagg'
+10421 INFO: Processing pre-find-module-path hook 'hook-tkinter.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_find_module_path'
+10421 INFO: TclTkInfo: initializing cached Tcl/Tk info...
+10442 WARNING: tkinter installation is broken. It will be excluded from the application
+10447 INFO: Processing module hooks (post-graph stage)...
+10640 INFO: Processing standard module hook 'hook-PIL.SpiderImagePlugin.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+10664 INFO: Processing standard module hook 'hook-matplotlib.backends.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+10664 INFO: Matplotlib backend selection method: automatic discovery of used backends
+10879 INFO: Trying determine the default backend as first importable candidate from the list: ['QtAgg', 'Qt5Agg', 'Gtk4Agg', 'Gtk3Agg', 'TkAgg', 'WxAgg']
+12291 INFO: None of the backend candidates could be imported; falling back to headless Agg!
+12291 INFO: Selected matplotlib backends: ['Agg']
+12338 INFO: Performing binary vs. data reclassification (203 entries)
+12343 INFO: Looking for ctypes DLLs
+12377 WARNING: Library user32 required via ctypes not found
+12390 WARNING: Library Advapi32 required via ctypes not found
+12401 WARNING: Library Cfgmgr32 required via ctypes not found
+12410 WARNING: Library setupapi required via ctypes not found
+12413 WARNING: Ignoring /System/Library/Frameworks/IOKit.framework/IOKit imported from /opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/serial/tools/list_ports_osx.py - only basenames are supported with ctypes imports!
+12413 WARNING: Ignoring /System/Library/Frameworks/CoreFoundation.framework/CoreFoundation imported from /opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/serial/tools/list_ports_osx.py - only basenames are supported with ctypes imports!
+12426 INFO: Analyzing run-time hooks ...
+12429 INFO: Including run-time hook 'pyi_rth_inspect.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+12431 INFO: Including run-time hook 'pyi_rth_pkgutil.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+12432 INFO: Including run-time hook 'pyi_rth_multiprocessing.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+12433 INFO: Including run-time hook 'pyi_rth_mplconfig.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/rthooks'
+12434 INFO: Processing pre-find-module-path hook 'hook-_pyi_rth_utils.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks/pre_find_module_path'
+12434 INFO: Processing standard module hook 'hook-_pyi_rth_utils.py' from '/opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/hooks'
+12445 INFO: Creating base_library.zip...
+12456 INFO: Looking for dynamic libraries
+12888 INFO: Warnings written to /workspaces/tinynav/build/read_serial/warn-read_serial.txt
+12913 INFO: Graph cross-reference written to /workspaces/tinynav/build/read_serial/xref-read_serial.html
+12927 INFO: checking PYZ
+12927 INFO: Building PYZ because PYZ-00.toc is non existent
+12927 INFO: Building PYZ (ZlibArchive) /workspaces/tinynav/build/read_serial/PYZ-00.pyz
+13444 INFO: Building PYZ (ZlibArchive) /workspaces/tinynav/build/read_serial/PYZ-00.pyz completed successfully.
+13460 INFO: checking PKG
+13460 INFO: Building PKG because PKG-00.toc is non existent
+13460 INFO: Building PKG (CArchive) read_serial.pkg
+22811 INFO: Building PKG (CArchive) read_serial.pkg completed successfully.
+22815 INFO: Bootloader /opt/esp/python_env/idf6.0_py3.12_env/lib/python3.12/site-packages/PyInstaller/bootloader/Linux-64bit-intel/run
+22815 INFO: checking EXE
+22815 INFO: Building EXE because EXE-00.toc is non existent
+22815 INFO: Building EXE from EXE-00.toc
+22815 INFO: Copying bootloader EXE to /workspaces/tinynav/dist/read_serial
+22815 INFO: Appending PKG archive to custom ELF section in EXE
+22908 INFO: Building EXE from EXE-00.toc completed successfully.
+22911 INFO: Build complete! The results are available in: /workspaces/tinynav/dist
+Building executables for Python scripts...
+Platform: Linux
+Architecture: x86_64
+
+============================================================
+Building visualize.py...
+============================================================
+
+✓ Successfully built visualize
+
+============================================================
+Building download_log.py...
+============================================================
+
+✓ Successfully built download_log
+
+============================================================
+Building read_serial.py...
+============================================================
+
+✓ Successfully built read_serial
+
+============================================================
+Build complete!
+============================================================
+
+Executables are located in the 'dist' directory:
+  - visualize (50.9 MB)
+  - download_log (7.5 MB)
+  - read_serial (41.3 MB)

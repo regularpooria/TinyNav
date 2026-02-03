@@ -1,0 +1,71 @@
+SYSTEM REQUIREMENTS FOR TINYNAV EXECUTABLES
+=============================================
+
+REQUIRED FOR ALL EXECUTABLES:
+- Linux x86_64 or Windows x86_64
+- No Python installation needed (bundled)
+- No external dependencies
+
+REQUIRED FOR download_log and read_serial:
+- Serial port access permissions (Linux: dialout group)
+- ESP32 device connected via USB
+
+
+SERIAL PORT ACCESS (Linux):
+----------------------------
+
+Add user to dialout group:
+  sudo usermod -a -G dialout $USER
+  
+Then logout and login again.
+
+Or run with sudo (not recommended):
+  sudo ./download_log
+
+
+TROUBLESHOOTING:
+----------------
+
+download_log/read_serial can't open serial port:
+  → Check device is connected: ls /dev/tty*
+  → Add user to dialout group (see above)
+  → Try different port: -p /dev/ttyUSB0
+
+Permission denied when running executables:
+  → chmod +x visualize download_log read_serial
+
+
+WINDOWS NOTES:
+--------------
+
+For download_log.exe to work on Windows, windows-curses
+must have been installed during the build process.
+
+To rebuild on Windows:
+  pip install windows-curses
+  python build_executables.py
+
+
+ABOUT GIF OUTPUT (visualize):
+------------------------------
+
+The visualize executable uses Pillow (PIL) which only supports GIF format.
+
+Advantages:
+  ✓ No external dependencies (ffmpeg not needed)
+  ✓ Works out-of-the-box on any system
+  ✓ Completely portable
+
+Disadvantages:
+  ✗ GIF format only (no MP4)
+  ✗ Large file sizes for animations
+  ✗ Limited color palette (256 colors)
+
+If you need MP4 output:
+  → Install ffmpeg on your system
+  → Use the Python script directly: python3 visualize.py input.csv
+  → The script can be modified to use ffmpeg writer when available
+
+GIF vs MP4:
+  • GIF: Universal compatibility, larger files, 256 colors
+  • MP4: Better compression, full color, requires ffmpeg

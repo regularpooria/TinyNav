@@ -12,12 +12,29 @@ import os
 import time
 import curses
 from datetime import datetime
+import argparse
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(
+    description='Download log files from ESP32 SD card via serial',
+    formatter_class=argparse.ArgumentDefaultsHelpFormatter
+)
+parser.add_argument('-p', '--port', default='/dev/ttyACM0',
+                    help='Serial port (e.g., /dev/ttyACM0, COM3)')
+parser.add_argument('-b', '--baud', type=int, default=921600,
+                    help='Baud rate')
+parser.add_argument('-d', '--dir', default='./logs', dest='download_dir',
+                    help='Download directory')
+parser.add_argument('-t', '--timeout', type=float, default=5.0,
+                    help='Serial communication timeout in seconds')
+
+args = parser.parse_args()
 
 # Configuration
-PORT = "/dev/ttyACM0"
-BAUD = 921600
-TIMEOUT = 5
-DOWNLOAD_DIR = "./logs"
+PORT = args.port
+BAUD = args.baud
+TIMEOUT = args.timeout
+DOWNLOAD_DIR = args.download_dir
 
 class SerialFileDownloader:
     def __init__(self, port, baudrate, timeout=5):
@@ -297,7 +314,12 @@ def tui_main(stdscr, downloader):
 
 def main():
     # Create download directory if it doesn't exist
-    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+    try:
+        os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+        print(f"Download directory: {os.path.abspath(DOWNLOAD_DIR)}")
+    except Exception as e:
+        print(f"ERROR: Could not create download directory: {e}")
+        sys.exit(1)
     
     try:
         print(f"Connecting to {PORT} at {BAUD} baud...")

@@ -1,0 +1,145 @@
+name: Build Executables
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'visualize.py'
+      - 'download_log.py'
+      - 'read_serial.py'
+      - 'build_executables.py'
+      - 'requirements.txt'
+      - '.github/workflows/build-executables.yml'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # Allow manual triggers
+  release:
+    types: [created]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Build Linux executables
+      run: |
+        python build_executables.py
+        ls -lh dist/
+    
+    - name: Test executables
+      run: |
+        chmod +x dist/visualize dist/download_log dist/read_serial
+        ./dist/visualize --help
+        ./dist/download_log --help
+        ./dist/read_serial --help
+    
+    - name: Package Linux executables
+      run: |
+        cd dist
+        tar -czf ../tinynav-executables-linux-x86_64.tar.gz \
+          visualize download_log read_serial \
+          README.md USAGE.md REQUIREMENTS.txt
+        cd ..
+        ls -lh tinynav-executables-linux-x86_64.tar.gz
+    
+    - name: Upload Linux artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: tinynav-linux-x86_64
+        path: tinynav-executables-linux-x86_64.tar.gz
+        retention-days: 90
+    
+    - name: Upload to release
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./tinynav-executables-linux-x86_64.tar.gz
+        asset_name: tinynav-executables-linux-x86_64.tar.gz
+        asset_content_type: application/gzip
+
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+        pip install windows-curses
+    
+    - name: Build Windows executables
+      run: |
+        python build_executables.py
+        dir dist\
+    
+    - name: Test executables
+      run: |
+        dist\visualize.exe --help
+        dist\download_log.exe --help
+        dist\read_serial.exe --help
+    
+    - name: Package Windows executables
+      run: |
+        cd dist
+        Compress-Archive -Path visualize.exe,download_log.exe,read_serial.exe,README.md,USAGE.md,REQUIREMENTS.txt -DestinationPath ..\tinynav-executables-windows-x86_64.zip
+        cd ..
+        dir tinynav-executables-windows-x86_64.zip
+    
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: tinynav-windows-x86_64
+        path: tinynav-executables-windows-x86_64.zip
+        retention-days: 90
+    
+    - name: Upload to release
+      if: github.event_name == 'release'
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ./tinynav-executables-windows-x86_64.zip
+        asset_name: tinynav-executables-windows-x86_64.zip
+        asset_content_type: application/zip
+
+  summary:
+    needs: [build-linux, build-windows]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Build Summary
+      run: |
+        echo "## Build Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Linux Build: ${{ needs.build-linux.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "### Windows Build: ${{ needs.build-windows.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "Artifacts available in the Actions tab for 90 days." >> $GITHUB_STEP_SUMMARY
