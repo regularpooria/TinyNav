@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dataset Editor</title>
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Dataset Editor</h1>
+            <div class="controls">
+                <input type="file" id="fileInput" accept=".csv" />
+                <button id="exportBtn" disabled>Export</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="visualization">
+                <canvas id="depthCanvas" width="200" height="200"></canvas>
+                <div class="frame-info">
+                    <span id="frameCounter">Frame: 0 / 0</span>
+                </div>
+            </div>
+
+            <div class="playback-controls">
+                <button id="playPauseBtn">▶️ Play</button>
+                <button id="prevFrameBtn">⏮️ Prev</button>
+                <button id="nextFrameBtn">⏭️ Next</button>
+                <label>
+                    Speed: <input type="range" id="speedSlider" min="1" max="60" value="15" />
+                    <span id="speedValue">15 FPS</span>
+                </label>
+                <label>
+                    Zoom: <input type="range" id="zoomSlider" min="1" max="20" step="0.1" value="1" />
+                    <span id="zoomValue">1.0x</span>
+                </label>
+            </div>
+
+            <div class="timeline-container">
+                <div class="timeline-header">
+                    <h3>Timeline</h3>
+                    <div class="timeline-tools">
+                        <button id="undoBtn" disabled>↶ Undo</button>
+                        <button id="cutBtn" disabled>✂️ Cut Selection</button>
+                        <button id="deleteBtn" disabled>🗑️ Delete Selection</button>
+                        <button id="clearSelectionBtn" disabled>Clear Selection</button>
+                    </div>
+                </div>
+                <canvas id="timelineCanvas"></canvas>
+                <div class="scrollbar-container">
+                    <input type="range" id="timelineScrollbar" min="0" max="0" step="0.01" value="0" disabled />
+                    <div id="playheadIndicator" class="playhead-indicator"></div>
+                </div>
+                <div class="timeline-info">
+                    <span id="selectionInfo">No selection</span>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="index.js"></script>
+</body>
+</html>

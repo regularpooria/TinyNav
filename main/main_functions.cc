@@ -28,6 +28,7 @@ limitations under the License.
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include "sdcard/sd.h"
+#include <esp_heap_caps.h>
 
 // LED‌ stuff
 #include <WS2812FX.h>
@@ -42,11 +43,13 @@ namespace
   const tflite::Model *model = nullptr;
   tflite::MicroInterpreter *interpreter = nullptr;
   TfLiteTensor *input = nullptr;
-  TfLiteTensor *output = nullptr;
+  TfLiteTensor *output_steering = nullptr;
+  TfLiteTensor *output_throttle = nullptr;
   int inference_count = 0;
 
-  constexpr int kTensorArenaSize = 2000;
-  uint8_t tensor_arena[kTensorArenaSize];
+  constexpr int kTensorArenaSize = 96 * 1024; // 96 KB for larger model
+  // Allocate tensor arena in PSRAM for ESP32-S3
+  uint8_t *tensor_arena = nullptr;
 
   const int NUM_LEDS = 8;
   const int LED_GPIO = 50;
@@ -76,6 +79,16 @@ void setup()
   drive_system_setup();
   setup_leds();
   serial_commands_init();
+
+  // Allocate tensor arena in PSRAM (External SPIRAM)
+  tensor_arena = (uint8_t *)heap_caps_malloc(kTensorArenaSize, MALLOC_CAP_SPIRAM);
+  if (tensor_arena == nullptr)
+  {
+    MicroPrintf("Failed to allocate tensor arena in PSRAM");
+    return;
+  }
+  MicroPrintf("Tensor arena allocated in PSRAM: %d bytes", kTensorArenaSize);
+
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
   model = tflite::GetModel(g_model);
@@ -88,11 +101,13 @@ void setup()
   }
 
   // Pull in only the operation implementations we need.
-  static tflite::MicroMutableOpResolver<1> resolver;
-  if (resolver.AddFullyConnected() != kTfLiteOk)
-  {
-    return;
-  }
+  // Model uses: Conv2D, DepthwiseConv2D, ReLU6, GlobalAveragePooling2D (Mean), FullyConnected
+  static tflite::MicroMutableOpResolver<5> resolver;
+  resolver.AddConv2D();
+  resolver.AddDepthwiseConv2D();
+  resolver.AddMean(); // GlobalAveragePooling2D becomes Mean
+  resolver.AddFullyConnected();
+  resolver.AddRelu6();
 
   // Build an interpreter to run the model with.
   static tflite::MicroInterpreter static_interpreter(
@@ -109,49 +124,72 @@ void setup()
 
   // Obtain pointers to the model's input and output tensors.
   input = interpreter->input(0);
-  output = interpreter->output(0);
+  output_steering = interpreter->output(0); // First output: steering
+  output_throttle = interpreter->output(1); // Second output: throttle
+
+  // Log input/output tensor shapes for debugging
+  MicroPrintf("Input shape: [%d, %d, %d, %d]",
+              input->dims->data[0], input->dims->data[1],
+              input->dims->data[2], input->dims->data[3]);
+  MicroPrintf("Output steering shape: [%d, %d]",
+              output_steering->dims->data[0], output_steering->dims->data[1]);
+  MicroPrintf("Output throttle shape: [%d, %d]",
+              output_throttle->dims->data[0], output_throttle->dims->data[1]);
 
   // Keep track of how many inferences we have performed.
   inference_count = 0;
 }
 void run_inference()
 {
-  // Calculate an x value to feed into the model. We compare the current
-  // inference_count to the number of inferences per cycle to determine
-  // our position within the range of possible x values the model was
-  // trained on, and use this to calculate a value.
-  float position = static_cast<float>(inference_count) /
-                   static_cast<float>(kInferencesPerCycle);
-  float x = position * kXrange;
+  // Get depth sensor data (25x25) and crop/resize to 24x24
+  // depthMap is defined in depth_sensor.h as float[25][25]
 
-  // Quantize the input from floating-point to integer
-  int8_t x_quantized = x / input->params.scale + input->params.zero_point;
-  // Place the quantized input in the model's input tensor
-  input->data.int8[0] = x_quantized;
+  // Center crop: skip first/last row and column to get 24x24 from 25x25
+  for (int row = 0; row < 24; row++)
+  {
+    for (int col = 0; col < 24; col++)
+    {
+      float depth_value = depthMap[row][col];
 
-  // Run inference, and report any error
+      // Normalize depth to [0, 1] range (depth sensor range: 0-2550mm)
+      float normalized = depth_value / 2550.0f;
+      normalized = normalized > 1.0f ? 1.0f : normalized; // Clamp to [0, 1]
+
+      // Quantize the input from floating-point to int8
+      int input_index = row * 24 + col; // Single channel, row-major order
+      int8_t quantized = normalized / input->params.scale + input->params.zero_point;
+      input->data.int8[input_index] = quantized;
+    }
+  }
+
+  // Run inference
   TfLiteStatus invoke_status = interpreter->Invoke();
   if (invoke_status != kTfLiteOk)
   {
-    MicroPrintf("Invoke failed on x: %f\n",
-                static_cast<double>(x));
+    MicroPrintf("Invoke failed\n");
     return;
   }
 
-  // Obtain the quantized output from model's output tensor
-  int8_t y_quantized = output->data.int8[0];
-  // Dequantize the output from integer to floating-point
-  float y = (y_quantized - output->params.zero_point) * output->params.scale;
+  // Dequantize outputs
+  int8_t steering_quantized = output_steering->data.int8[0];
+  int8_t throttle_quantized = output_throttle->data.int8[0];
 
-  // Output the results. A custom HandleOutput function can be implemented
-  // for each supported hardware target.
-  HandleOutput(x, y);
+  float steering = (steering_quantized - output_steering->params.zero_point) *
+                   output_steering->params.scale;
+  float throttle = (throttle_quantized - output_throttle->params.zero_point) *
+                   output_throttle->params.scale;
 
-  // Increment the inference_counter, and reset it if we have reached
-  // the total number per cycle
+  // Clamp outputs to expected ranges
+  // Steering: [-1, 1] (tanh activation)
+  // Throttle: can vary (linear activation)
+  steering = steering < -1.0f ? -1.0f : (steering > 1.0f ? 1.0f : steering);
+  throttle = throttle < 0.0f ? 0.0f : throttle; // Assuming non-negative throttle
+
+  // TODO: Apply steering and throttle to drive system
+  MicroPrintf("Inference: steering=%.3f, throttle=%.3f",
+              static_cast<double>(steering), static_cast<double>(throttle));
+
   inference_count += 1;
-  if (inference_count >= kInferencesPerCycle)
-    inference_count = 0;
 }
 
 void setup_leds()
@@ -202,7 +240,7 @@ void loop()
   // LED stuff
   led_manager_update();
   fx->service();
-  
+
   // Process serial commands
   serial_commands_process();
 }
