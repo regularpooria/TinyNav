@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <WS2812FX.h>
 #include "../led_manager.h"
+#include "depth_sensor.h"
+#include "../main_functions.h"
 
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
@@ -196,15 +198,36 @@ void drive_system_setup()
 }
 void drive_system_loop()
 {
-  // Get normalized values (0.0 to 1.0)
-  float throttle = normalize_pulse(pulse_width_us[1]); // CH1: 0=reverse, 1=forward
-  float steering = normalize_pulse(pulse_width_us[0]); // CH2: 0=right, 1=left
-  float ch3 = normalize_pulse(pulse_width_us[2]);      // CH3: 0.0 to 1.0
+  float throttle_input, steering_input;
+  
+  // Check if we're in inference mode (mode 3)
+  if (write_to_sd == 3)
+  {
+    // Use AI inference results
+    steering_input = get_inference_steering(); // -1.0 to +1.0
+    throttle_input = get_inference_throttle(); // 0.0 to 1.0 (assumed)
+    
+    // Convert throttle from [0, 1] to [-1, 1] if needed
+    // Assuming inference gives positive throttle only
+    throttle_scaled = throttle_input;
+    steering_scaled = steering_input;
+  }
+  else
+  {
+    // Use RC controller input
+    float throttle = normalize_pulse(pulse_width_us[1]); // CH1: 0=reverse, 1=forward
+    float steering = normalize_pulse(pulse_width_us[0]); // CH2: 0=right, 1=left
+    float ch3 = normalize_pulse(pulse_width_us[2]);      // CH3: 0.0 to 1.0
+    
+    // Convert to -1.0 to +1.0 range
+    throttle_scaled = (throttle * 2.0f) - 1.0f; // -1.0 (reverse) to +1.0 (forward)
+    steering_scaled = (steering * 2.0f) - 1.0f; // -1.0 (right) to +1.0 (left)
+    ch3_scaled = ch3;                           // Store for other systems
+  }
 
-  // Convert to -1.0 to +1.0 range
-  throttle_scaled = (throttle * 2.0f) - 1.0f; // -1.0 (reverse) to +1.0 (forward)
-  steering_scaled = (steering * 2.0f) - 1.0f; // -1.0 (right) to +1.0 (left)
-  ch3_scaled = ch3;                           // Store for other systems
+  // Get ch3 for mode switching (always from RC)
+  float ch3 = normalize_pulse(pulse_width_us[2]);
+  ch3_scaled = ch3;
 
   // Tank drive mixing
   float left_motor = throttle_scaled + steering_scaled;
@@ -231,23 +254,26 @@ void drive_system_loop()
   float input_voltage = read_voltage_mv();
 
   // Debug output
-  printf("VOLTAGE: %.2f | Throttle: %.2f | Steering: %.2f | CH3: %.2f | Left: %d%% | Right: %d%%\n",
-         input_voltage, throttle_scaled, steering_scaled, ch3_scaled, left_speed, right_speed);
+  // printf("VOLTAGE: %.2f | Throttle: %.2f | Steering: %.2f | CH3: %.2f | Left: %d%% | Right: %d%%\n",
+  //        input_voltage, throttle_scaled, steering_scaled, ch3_scaled, left_speed, right_speed);
 
-  // Use LED manager with normal priority for drive status
-  if (throttle_scaled > 0.1f)
+  // Use LED manager with normal priority for drive status (only in mode 0)
+  if (write_to_sd == 0)
   {
-    // Moving forward
-    led_manager_set(LED_PRIORITY_NORMAL, FX_MODE_STATIC, BLUE, 0, 0);
-  }
-  else if (throttle_scaled < -0.1f)
-  {
-    // Moving backward
-    led_manager_set(LED_PRIORITY_NORMAL, FX_MODE_STATIC, RED, 0, 0);
-  }
-  else
-  {
-    led_manager_set(LED_PRIORITY_NORMAL, FX_MODE_STATIC, YELLOW, 0, 0);
+    if (throttle_scaled > 0.1f)
+    {
+      // Moving forward
+      led_manager_set(LED_PRIORITY_NORMAL, FX_MODE_STATIC, BLUE, 0, 0);
+    }
+    else if (throttle_scaled < -0.1f)
+    {
+      // Moving backward
+      led_manager_set(LED_PRIORITY_NORMAL, FX_MODE_STATIC, RED, 0, 0);
+    }
+    else
+    {
+      led_manager_set(LED_PRIORITY_NORMAL, FX_MODE_STATIC, YELLOW, 0, 0);
+    }
   }
 }
 

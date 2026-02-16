@@ -57,6 +57,7 @@ extern uint8_t rxBuffer[BUFFER_SIZE];
 extern int g_frame_counter;
 extern FILE *g_depth_log_file;
 extern char g_depth_log_filename[64];
+extern short write_to_sd; // 0=off, 1=serial, 2=SD, 3=inference
 
 // -------------------- API --------------------
 // void depth_sensor_task(void *pvParameters);

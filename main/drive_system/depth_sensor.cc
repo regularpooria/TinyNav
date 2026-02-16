@@ -10,6 +10,7 @@
 #include "../sdcard/sd.h"
 #include <WS2812FX.h>
 #include "../led_manager.h"
+#include "../main_functions.h"
 
 // -------------------- Constants --------------------
 #define FRAME_START_BYTE_1 0x00
@@ -168,7 +169,7 @@ void depth_sensor_init()
     fprintf(g_depth_log_file, "# Frame,Steering,Throttle,Width,Height,Data...\n");
 
     fflush(g_depth_log_file);
-    printf("Initial mode: Off (cycle modes with CH3: Off -> Serial -> SD -> Off)\n");
+    printf("Initial mode: Off (cycle modes with CH3: Off -> Serial -> SD -> Inference -> Off)\n");
   }
   else
   {
@@ -344,8 +345,9 @@ void fullPrint()
 // -------------------- Main Task --------------------
 void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
 {
-  static DepthFrame frame;     // Static to avoid stack overflow
-  static float prev_ch3 = 0.0; // Track previous CH3 value for edge detection
+  static DepthFrame frame;                // Static to avoid stack overflow
+  static float prev_ch3 = 0.0;            // Track previous CH3 value for edge detection
+  static int inference_frame_counter = 0; // Track frames for inference skipping
 
   while (!getPacket()) // Keep reading until full packet received
   {
@@ -390,11 +392,14 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
     }
     else
     {
-      // From mode 0 or 2, cycle to next
+      // From mode 0, 2, or 3, cycle to next
       int prev_mode = write_to_sd;
-      write_to_sd = (write_to_sd + 1) % 3;
+      write_to_sd = (write_to_sd + 1) % 4;
       sd_card_cooldown = SD_CARD_COOLDOWN;
 
+      // Clear LED queue when switching modes to prevent stale commands
+      led_manager_clear();
+      
       if (write_to_sd == 0)
       {
         // Switching out of SD write mode - flush and sync one final time
@@ -417,6 +422,22 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
         printf("Mode: Serial print\n");
         led_manager_set(LED_PRIORITY_HIGH, FX_MODE_STATIC, BLUE, 0, 2000);
       }
+      else if (write_to_sd == 2)
+      {
+        printf("Mode: Writing to SD card\n");
+        led_manager_set(LED_PRIORITY_HIGH, FX_MODE_BLINK, PURPLE, 500, 0);
+      }
+      else if (write_to_sd == 3)
+      {
+        // Switching out of SD write mode - flush and sync one final time
+        if (prev_mode == 2 && g_depth_log_file != NULL)
+        {
+          fflush(g_depth_log_file);
+          fsync(fileno(g_depth_log_file));
+        }
+        printf("Mode: Inference\n");
+        led_manager_set(LED_PRIORITY_HIGH, FX_MODE_BLINK, CYAN, 500, 0); // Blink while running AI
+      }
     }
   }
 
@@ -437,12 +458,22 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
       appendDepthFrame(*steering_ptr, *throttle_ptr); // Write to SD card with control values
     }
     frame_skip_counter++;
-    
+
     // Reset counter to prevent overflow (every 10000 frames = ~8 minutes at 20 FPS)
     if (frame_skip_counter >= 10000)
     {
       frame_skip_counter = 0;
     }
+  }
+  else if (write_to_sd == 3)
+  {
+    // Run inference every 3 frames to reduce lag
+    // Inference runs asynchronously on core 1
+    if (inference_frame_counter == 0)
+    {
+      request_inference();
+    }
+    inference_frame_counter = (inference_frame_counter + 1) % 1;
   }
 
   // Decrement cooldown

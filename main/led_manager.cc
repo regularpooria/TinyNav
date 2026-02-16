@@ -35,6 +35,12 @@ bool led_manager_set(led_priority_t priority, uint8_t mode, uint32_t color, uint
     return false;
   }
   
+  // Don't queue commands with lower priority than current active command
+  if (priority < g_current_cmd.priority)
+  {
+    return false;
+  }
+  
   led_command_t cmd;
   cmd.priority = priority;
   cmd.mode = mode;

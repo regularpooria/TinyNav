@@ -56,7 +56,55 @@ namespace
   led_strip_handle_t led_strip = nullptr;
   WS2812FX *fx = nullptr;
 
+  // Inference results - persist between frames
+  float inference_steering = 0.0f;
+  float inference_throttle = 0.0f;
+
+  // Inference task handle and synchronization for async inference on core 1
+  TaskHandle_t inference_task_handle = nullptr;
+  SemaphoreHandle_t depth_mutex = nullptr;
+  volatile bool inference_requested = false;
+
+  // Separate depth buffer for inference to avoid blocking sensor
+  float *inference_depthMap = nullptr;
+
 } // namespace
+
+// Inference task that runs on core 1
+void inference_task(void *pvParameters)
+{
+  while (true)
+  {
+    // Check if inference is requested
+    if (inference_requested)
+    {
+      run_inference();
+      inference_requested = false;
+    }
+    else
+    {
+      // Wait briefly before checking again
+      vTaskDelay(pdMS_TO_TICKS(10));
+    }
+  }
+}
+
+// Non-blocking function to request inference with frame copy
+void request_inference()
+{
+  if (!inference_requested && inference_depthMap != nullptr && depth_mutex != nullptr)
+  {
+    // Use mutex to safely copy depth data from core 0 to core 1
+    if (xSemaphoreTake(depth_mutex, pdMS_TO_TICKS(5)) == pdTRUE)
+    {
+      // Copy 25x25 depth frame
+      memcpy(inference_depthMap, depthMap, 25 * 25 * sizeof(float));
+      xSemaphoreGive(depth_mutex);
+
+      inference_requested = true;
+    }
+  }
+}
 
 // The name of this function is important for Arduino compatibility.
 void setup()
@@ -80,6 +128,15 @@ void setup()
   setup_leds();
   serial_commands_init();
 
+  // Allocate inference depth buffer for core 1
+  inference_depthMap = (float *)malloc(25 * 25 * sizeof(float));
+  if (inference_depthMap == nullptr)
+  {
+    MicroPrintf("Failed to allocate inference depth buffer");
+    return;
+  }
+  MicroPrintf("Inference depth buffer allocated: %d bytes", 25 * 25 * sizeof(float));
+
   // Allocate tensor arena in PSRAM (External SPIRAM)
   tensor_arena = (uint8_t *)heap_caps_malloc(kTensorArenaSize, MALLOC_CAP_SPIRAM);
   if (tensor_arena == nullptr)
@@ -101,13 +158,25 @@ void setup()
   }
 
   // Pull in only the operation implementations we need.
-  // Model uses: Conv2D, DepthwiseConv2D, ReLU6, GlobalAveragePooling2D (Mean), FullyConnected
-  static tflite::MicroMutableOpResolver<5> resolver;
+  // Model uses: Conv2D, DepthwiseConv2D, ReLU6, GlobalAveragePooling2D (Mean), FullyConnected, Tanh
+  static tflite::MicroMutableOpResolver<7> resolver;
   resolver.AddConv2D();
   resolver.AddDepthwiseConv2D();
   resolver.AddMean(); // GlobalAveragePooling2D becomes Mean
   resolver.AddFullyConnected();
   resolver.AddRelu6();
+  resolver.AddTanh();
+  resolver.AddLogistic();
+
+  // static tflite::MicroMutableOpResolver<8> resolver;
+  // resolver.AddConv2D();
+  // resolver.AddDepthwiseConv2D();
+  // resolver.AddMean();    // For GlobalAveragePooling2D
+  // resolver.AddReshape(); // <--- Often needed between Pooling and Dense
+  // resolver.AddFullyConnected();
+  // resolver.AddHardSwish();
+  // resolver.AddTanh();
+  // resolver.AddLogistic();
 
   // Build an interpreter to run the model with.
   static tflite::MicroInterpreter static_interpreter(
@@ -124,8 +193,9 @@ void setup()
 
   // Obtain pointers to the model's input and output tensors.
   input = interpreter->input(0);
-  output_steering = interpreter->output(0); // First output: steering
-  output_throttle = interpreter->output(1); // Second output: throttle
+  // IMPORTANT: Output 0 is THROTTLE, Output 1 is STEERING (based on training code)
+  output_throttle = interpreter->output(0); // First output: throttle
+  output_steering = interpreter->output(1); // Second output: steering
 
   // Log input/output tensor shapes for debugging
   MicroPrintf("Input shape: [%d, %d, %d, %d]",
@@ -138,27 +208,74 @@ void setup()
 
   // Keep track of how many inferences we have performed.
   inference_count = 0;
+
+  // Create mutex for thread-safe depth data access
+  depth_mutex = xSemaphoreCreateMutex();
+  if (depth_mutex == nullptr)
+  {
+    MicroPrintf("Failed to create depth mutex");
+    return;
+  }
+
+  // Create inference task on core 1
+  BaseType_t result = xTaskCreatePinnedToCore(
+      inference_task,         // Task function
+      "inference_task",       // Task name
+      8192,                   // Stack size (8KB)
+      nullptr,                // Parameters
+      5,                      // Priority (same as main loop)
+      &inference_task_handle, // Task handle
+      1                       // Pin to core 1
+  );
+
+  if (result != pdPASS)
+  {
+    MicroPrintf("Failed to create inference task on core 1");
+    return;
+  }
+
+  MicroPrintf("Inference task created on core 1");
 }
 void run_inference()
 {
-  // Get depth sensor data (25x25) and crop/resize to 24x24
-  // depthMap is defined in depth_sensor.h as float[25][25]
+  // Check if interpreter is initialized
+  if (interpreter == nullptr || input == nullptr || output_steering == nullptr || output_throttle == nullptr)
+  {
+    MicroPrintf("Inference skipped: model not initialized");
+    return;
+  }
 
-  // Center crop: skip first/last row and column to get 24x24 from 25x25
+  // Get depth sensor data (25x25), rotate 90° clockwise, then crop to 24x24
+  // Use inference_depthMap copy to avoid blocking sensor
+  // Python: np.rot90(data, k=-1, axes=(1, 2)) rotates clockwise
+  // For 90° clockwise rotation: rotated[i][j] = original[24-j][i]
   for (int row = 0; row < 24; row++)
   {
     for (int col = 0; col < 24; col++)
     {
-      float depth_value = depthMap[row][col];
+      // Apply 90° clockwise rotation, then crop center 24x24
+      // Map output (row, col) back to input coordinates
+      int src_row = 24 - col; // For clockwise: new_row comes from flipped col
+      int src_col = row;      // For clockwise: new_col comes from row
+
+      // Access from copied buffer
+      float depth_value = inference_depthMap[src_row * 25 + src_col];
 
       // Normalize depth to [0, 1] range (depth sensor range: 0-2550mm)
       float normalized = depth_value / 2550.0f;
       normalized = normalized > 1.0f ? 1.0f : normalized; // Clamp to [0, 1]
 
-      // Quantize the input from floating-point to int8
+      // Quantize the input: quantized = (value / scale + zero_point) truncated to int8
+      // Matches Python: (test_input / input_scale + input_zero).astype(np.int8)
       int input_index = row * 24 + col; // Single channel, row-major order
-      int8_t quantized = normalized / input->params.scale + input->params.zero_point;
-      input->data.int8[input_index] = quantized;
+      float quantized_float = normalized / input->params.scale + input->params.zero_point;
+      int32_t quantized = static_cast<int32_t>(quantized_float);
+      // Clamp to int8 range
+      if (quantized < -128)
+        quantized = -128;
+      if (quantized > 127)
+        quantized = 127;
+      input->data.int8[input_index] = static_cast<int8_t>(quantized);
     }
   }
 
@@ -170,26 +287,41 @@ void run_inference()
     return;
   }
 
-  // Dequantize outputs
+  // Dequantize outputs: dequantized = (quantized - zero_point) * scale
   int8_t steering_quantized = output_steering->data.int8[0];
   int8_t throttle_quantized = output_throttle->data.int8[0];
 
-  float steering = (steering_quantized - output_steering->params.zero_point) *
+  float steering = (float)(steering_quantized - output_steering->params.zero_point) *
                    output_steering->params.scale;
-  float throttle = (throttle_quantized - output_throttle->params.zero_point) *
+  float throttle = (float)(throttle_quantized - output_throttle->params.zero_point) *
                    output_throttle->params.scale;
 
   // Clamp outputs to expected ranges
   // Steering: [-1, 1] (tanh activation)
-  // Throttle: can vary (linear activation)
+  // Throttle: [-1, 1] (linear activation, allows reverse)
   steering = steering < -1.0f ? -1.0f : (steering > 1.0f ? 1.0f : steering);
-  throttle = throttle < 0.0f ? 0.0f : throttle; // Assuming non-negative throttle
+  throttle = throttle < -1.0f ? -1.0f : (throttle > 1.0f ? 1.0f : throttle);
+
+  // Save inference results to persist between frames
+  inference_steering = steering;
+  inference_throttle = throttle;
 
   // TODO: Apply steering and throttle to drive system
   MicroPrintf("Inference: steering=%.3f, throttle=%.3f",
               static_cast<double>(steering), static_cast<double>(throttle));
 
   inference_count += 1;
+}
+
+// Getter functions for inference results
+float get_inference_steering()
+{
+  return inference_steering;
+}
+
+float get_inference_throttle()
+{
+  return inference_throttle;
 }
 
 void setup_leds()

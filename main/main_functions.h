@@ -33,6 +33,11 @@ extern "C"
   void loop();
 
   void run_inference();
+  void request_inference(); // Non-blocking inference request for core 1
+  
+  // Get current inference results (only valid in inference mode)
+  float get_inference_steering();
+  float get_inference_throttle();
 
 #ifdef __cplusplus
 }
