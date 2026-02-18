@@ -25,6 +25,6 @@ extern "C" void app_main(void)
   while (true)
   {
     loop();
-    vTaskDelay(pdMS_TO_TICKS(50)); // ~20 Hz
+    vTaskDelay(pdMS_TO_TICKS(40)); // ~20 Hz
   }
 }

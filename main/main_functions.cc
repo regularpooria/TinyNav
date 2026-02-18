@@ -29,6 +29,7 @@ limitations under the License.
 #include <freertos/task.h>
 #include "sdcard/sd.h"
 #include <esp_heap_caps.h>
+#include <esp_timer.h>
 
 // LED‌ stuff
 #include <WS2812FX.h>
@@ -60,13 +61,29 @@ namespace
   float inference_steering = 0.0f;
   float inference_throttle = 0.0f;
 
+  // FPS tracking
+  int64_t fps_window_start_us = 0;
+  int fps_window_count = 0;
+  float inference_fps = 0.0f;
+
+  // Per-section timing accumulators (reset every second with FPS report)
+  int64_t acc_input_fill_us = 0; // Time to quantize input tensor
+  int64_t acc_invoke_us = 0;     // Time for interpreter->Invoke()
+  int64_t acc_frame_copy_us = 0; // Time for memcpy in request_inference()
+  int64_t acc_add_frame_us = 0;  // Time for add_frame_to_buffer()
+
   // Inference task handle and synchronization for async inference on core 1
   TaskHandle_t inference_task_handle = nullptr;
   SemaphoreHandle_t depth_mutex = nullptr;
   volatile bool inference_requested = false;
 
-  // Separate depth buffer for inference to avoid blocking sensor
-  float *inference_depthMap = nullptr;
+  // Frame buffer: store last 10 frames for inference (24x24 each)
+  constexpr int NUM_FRAMES = 10;
+  constexpr int FRAME_SIZE = 24 * 24;
+  float *frame_buffer = nullptr;     // Buffer for 10 frames: [10][24][24]
+  float *inference_buffer = nullptr; // Snapshot for inference computation
+  int frame_count = 0;               // Total frames received
+  int buffer_index = 0;              // Current write position in circular buffer
 
 } // namespace
 
@@ -84,7 +101,7 @@ void inference_task(void *pvParameters)
     else
     {
       // Wait briefly before checking again
-      vTaskDelay(pdMS_TO_TICKS(10));
+      vTaskDelay(pdMS_TO_TICKS(1));
     }
   }
 }
@@ -92,17 +109,68 @@ void inference_task(void *pvParameters)
 // Non-blocking function to request inference with frame copy
 void request_inference()
 {
-  if (!inference_requested && inference_depthMap != nullptr && depth_mutex != nullptr)
+  if (!inference_requested && frame_buffer != nullptr && inference_buffer != nullptr && depth_mutex != nullptr)
   {
-    // Use mutex to safely copy depth data from core 0 to core 1
+    // Check if we have at least 10 frames
+    if (frame_count < NUM_FRAMES)
+    {
+      return; // Not enough frames yet
+    }
+
+    // Use mutex to safely copy frame buffer from core 0 to core 1
     if (xSemaphoreTake(depth_mutex, pdMS_TO_TICKS(5)) == pdTRUE)
     {
-      // Copy 25x25 depth frame
-      memcpy(inference_depthMap, depthMap, 25 * 25 * sizeof(float));
+      // Copy all 10 frames to inference buffer for computation
+      int64_t t_copy_start = esp_timer_get_time();
+      memcpy(inference_buffer, frame_buffer, NUM_FRAMES * FRAME_SIZE * sizeof(float));
+      acc_frame_copy_us += esp_timer_get_time() - t_copy_start;
       xSemaphoreGive(depth_mutex);
 
       inference_requested = true;
     }
+  }
+}
+
+// Add new frame to circular buffer (called from depth sensor task)
+void add_frame_to_buffer()
+{
+  if (frame_buffer == nullptr || depth_mutex == nullptr)
+  {
+    return;
+  }
+
+  // Use mutex to safely update frame buffer
+  if (xSemaphoreTake(depth_mutex, pdMS_TO_TICKS(5)) == pdTRUE)
+  {
+    int64_t t_add_start = esp_timer_get_time();
+    // Get depth sensor data (25x25), rotate 90° clockwise, then crop to 24x24
+    // For 90° clockwise rotation: rotated[i][j] = original[24-j][i]
+    float *current_frame = &frame_buffer[buffer_index * FRAME_SIZE];
+
+    for (int row = 0; row < 24; row++)
+    {
+      for (int col = 0; col < 24; col++)
+      {
+        // Apply 90° clockwise rotation, then crop center 24x24
+        int src_row = 24 - col; // For clockwise: new_row comes from flipped col
+        int src_col = row;      // For clockwise: new_col comes from row
+
+        float depth_value = depthMap[src_row][src_col];
+
+        // Normalize depth to [0, 1] range (depth sensor range: 0-2550mm)
+        float normalized = depth_value / 2550.0f;
+        normalized = normalized > 1.0f ? 1.0f : normalized; // Clamp to [0, 1]
+
+        current_frame[row * 24 + col] = normalized;
+      }
+    }
+
+    // Update circular buffer index
+    buffer_index = (buffer_index + 1) % NUM_FRAMES;
+    frame_count++;
+
+    acc_add_frame_us += esp_timer_get_time() - t_add_start;
+    xSemaphoreGive(depth_mutex);
   }
 }
 
@@ -128,14 +196,24 @@ void setup()
   setup_leds();
   serial_commands_init();
 
-  // Allocate inference depth buffer for core 1
-  inference_depthMap = (float *)malloc(25 * 25 * sizeof(float));
-  if (inference_depthMap == nullptr)
+  // Allocate frame buffer for last 10 frames (24x24 each)
+  frame_buffer = (float *)malloc(NUM_FRAMES * FRAME_SIZE * sizeof(float));
+  if (frame_buffer == nullptr)
   {
-    MicroPrintf("Failed to allocate inference depth buffer");
+    MicroPrintf("Failed to allocate frame buffer");
     return;
   }
-  MicroPrintf("Inference depth buffer allocated: %d bytes", 25 * 25 * sizeof(float));
+  memset(frame_buffer, 0, NUM_FRAMES * FRAME_SIZE * sizeof(float));
+  MicroPrintf("Frame buffer allocated: %d bytes", NUM_FRAMES * FRAME_SIZE * sizeof(float));
+
+  // Allocate inference buffer for snapshot during computation
+  inference_buffer = (float *)malloc(NUM_FRAMES * FRAME_SIZE * sizeof(float));
+  if (inference_buffer == nullptr)
+  {
+    MicroPrintf("Failed to allocate inference buffer");
+    return;
+  }
+  MicroPrintf("Inference buffer allocated: %d bytes", NUM_FRAMES * FRAME_SIZE * sizeof(float));
 
   // Allocate tensor arena in PSRAM (External SPIRAM)
   tensor_arena = (uint8_t *)heap_caps_malloc(kTensorArenaSize, MALLOC_CAP_SPIRAM);
@@ -159,7 +237,7 @@ void setup()
 
   // Pull in only the operation implementations we need.
   // Model uses: Conv2D, DepthwiseConv2D, ReLU6, GlobalAveragePooling2D (Mean), FullyConnected, Tanh
-  static tflite::MicroMutableOpResolver<7> resolver;
+  static tflite::MicroMutableOpResolver<18> resolver;
   resolver.AddConv2D();
   resolver.AddDepthwiseConv2D();
   resolver.AddMean(); // GlobalAveragePooling2D becomes Mean
@@ -167,6 +245,17 @@ void setup()
   resolver.AddRelu6();
   resolver.AddTanh();
   resolver.AddLogistic();
+  resolver.AddMul();
+  resolver.AddConcatenation();
+  resolver.AddMaxPool2D();
+  resolver.AddAdd();
+  resolver.AddSpaceToBatchNd();
+  resolver.AddBatchToSpaceNd();
+  resolver.AddReduceMax();
+  resolver.AddReshape();
+  resolver.AddShape();
+  resolver.AddStridedSlice();
+  resolver.AddPack();
 
   // static tflite::MicroMutableOpResolver<8> resolver;
   // resolver.AddConv2D();
@@ -245,42 +334,43 @@ void run_inference()
     return;
   }
 
-  // Get depth sensor data (25x25), rotate 90° clockwise, then crop to 24x24
-  // Use inference_depthMap copy to avoid blocking sensor
-  // Python: np.rot90(data, k=-1, axes=(1, 2)) rotates clockwise
-  // For 90° clockwise rotation: rotated[i][j] = original[24-j][i]
-  for (int row = 0; row < 24; row++)
+  // Use inference_buffer which contains snapshot of 10 frames
+  // Input shape expected: (24, 24, 10)
+  // Fill input tensor with 10 frames
+  int64_t t_input_start = esp_timer_get_time();
+  for (int frame_idx = 0; frame_idx < NUM_FRAMES; frame_idx++)
   {
-    for (int col = 0; col < 24; col++)
+    // Get the frame in chronological order (oldest to newest)
+    // buffer_index points to the next write position, so oldest frame is at buffer_index
+    int actual_frame_idx = (buffer_index + frame_idx) % NUM_FRAMES;
+    float *frame_data = &inference_buffer[actual_frame_idx * FRAME_SIZE];
+
+    for (int row = 0; row < 24; row++)
     {
-      // Apply 90° clockwise rotation, then crop center 24x24
-      // Map output (row, col) back to input coordinates
-      int src_row = 24 - col; // For clockwise: new_row comes from flipped col
-      int src_col = row;      // For clockwise: new_col comes from row
+      for (int col = 0; col < 24; col++)
+      {
+        float normalized = frame_data[row * 24 + col];
 
-      // Access from copied buffer
-      float depth_value = inference_depthMap[src_row * 25 + src_col];
-
-      // Normalize depth to [0, 1] range (depth sensor range: 0-2550mm)
-      float normalized = depth_value / 2550.0f;
-      normalized = normalized > 1.0f ? 1.0f : normalized; // Clamp to [0, 1]
-
-      // Quantize the input: quantized = (value / scale + zero_point) truncated to int8
-      // Matches Python: (test_input / input_scale + input_zero).astype(np.int8)
-      int input_index = row * 24 + col; // Single channel, row-major order
-      float quantized_float = normalized / input->params.scale + input->params.zero_point;
-      int32_t quantized = static_cast<int32_t>(quantized_float);
-      // Clamp to int8 range
-      if (quantized < -128)
-        quantized = -128;
-      if (quantized > 127)
-        quantized = 127;
-      input->data.int8[input_index] = static_cast<int8_t>(quantized);
+        // Quantize the input: quantized = (value / scale + zero_point) truncated to int8
+        // Input layout: (24, 24, 10) - row-major
+        int input_index = (row * 24 + col) * NUM_FRAMES + frame_idx;
+        float quantized_float = normalized / input->params.scale + input->params.zero_point;
+        int32_t quantized = static_cast<int32_t>(quantized_float);
+        // Clamp to int8 range
+        if (quantized < -128)
+          quantized = -128;
+        if (quantized > 127)
+          quantized = 127;
+        input->data.int8[input_index] = static_cast<int8_t>(quantized);
+      }
     }
   }
+  acc_input_fill_us += esp_timer_get_time() - t_input_start;
 
   // Run inference
+  int64_t t_invoke_start = esp_timer_get_time();
   TfLiteStatus invoke_status = interpreter->Invoke();
+  acc_invoke_us += esp_timer_get_time() - t_invoke_start;
   if (invoke_status != kTfLiteOk)
   {
     MicroPrintf("Invoke failed\n");
@@ -307,8 +397,35 @@ void run_inference()
   inference_throttle = throttle;
 
   // TODO: Apply steering and throttle to drive system
-  MicroPrintf("Inference: steering=%.3f, throttle=%.3f",
-              static_cast<double>(steering), static_cast<double>(throttle));
+  // MicroPrintf("Inference: steering=%.3f, throttle=%.3f",
+  //             static_cast<double>(steering), static_cast<double>(throttle));
+
+  // FPS tracking: measure over a 1-second window to avoid log spam
+  int64_t now_us = esp_timer_get_time();
+  if (fps_window_start_us == 0)
+  {
+    fps_window_start_us = now_us;
+  }
+  fps_window_count++;
+  int64_t elapsed_us = now_us - fps_window_start_us;
+  if (elapsed_us >= 1000000) // 1 second window
+  {
+    inference_fps = (float)fps_window_count * 1e6f / (float)elapsed_us;
+    // Average time per inference for each section (in ms)
+    float count = fps_window_count > 0 ? (float)fps_window_count : 1.0f;
+    MicroPrintf("=== Inference Profile (avg over %.0f inferences) ===", static_cast<double>(count));
+    MicroPrintf("  FPS          : %.2f", static_cast<double>(inference_fps));
+    MicroPrintf("  Input fill   : %.2f ms", static_cast<double>((float)acc_input_fill_us / count / 1000.0f));
+    MicroPrintf("  Invoke       : %.2f ms", static_cast<double>((float)acc_invoke_us / count / 1000.0f));
+    MicroPrintf("  Frame copy   : %.2f ms", static_cast<double>((float)acc_frame_copy_us / count / 1000.0f));
+    MicroPrintf("  Add frame    : %.2f ms (per frame add, not per inference)", static_cast<double>((float)acc_add_frame_us / count / 1000.0f));
+    fps_window_start_us = now_us;
+    fps_window_count = 0;
+    acc_input_fill_us = 0;
+    acc_invoke_us = 0;
+    acc_frame_copy_us = 0;
+    acc_add_frame_us = 0;
+  }
 
   inference_count += 1;
 }

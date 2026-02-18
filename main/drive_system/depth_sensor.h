@@ -6,7 +6,7 @@
 
 // -------------------- Configuration --------------------
 #define UART_PORT_NUM UART_NUM_2
-#define UART_BAUD_RATE 115200
+#define UART_BAUD_RATE 230400
 #define UART_RX_PIN 20
 #define UART_TX_PIN 21
 

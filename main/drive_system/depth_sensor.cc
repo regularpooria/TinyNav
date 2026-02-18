@@ -16,7 +16,7 @@
 #define FRAME_START_BYTE_1 0x00
 #define FRAME_START_BYTE_2 0xFF
 #define FRAME_END_BYTE 0xDD
-#define SD_CARD_COOLDOWN 50 // Ticks
+#define SD_CARD_COOLDOWN 10 // Ticks
 
 // -------------------- Globals --------------------
 int imageRows = 25;
@@ -40,7 +40,7 @@ int sd_card_cooldown = 0;
 void depth_sensor_init()
 {
   uart_config_t uart_config = {
-      .baud_rate = UART_BAUD_RATE,
+      .baud_rate = 115200, // Start at 115200; switched to UART_BAUD_RATE via AT+BAUD below
       .data_bits = UART_DATA_8_BITS,
       .parity = UART_PARITY_DISABLE,
       .stop_bits = UART_STOP_BITS_1,
@@ -60,6 +60,19 @@ void depth_sensor_init()
   // Wait before sending commands (mimics Arduino delay)
   vTaskDelay(pdMS_TO_TICKS(1000));
 
+  // Switch sensor baud rate to 230400, then re-init UART to match.
+  // Send at current rate (115200), sensor switches immediately after ACK.
+  printf("Switching baud rate to 230400\n");
+  const char *baud_cmd = "AT+BAUD=3\r";
+  uart_write_bytes(UART_PORT_NUM, baud_cmd, strlen(baud_cmd));
+  vTaskDelay(pdMS_TO_TICKS(200)); // Wait for sensor to apply change
+
+  // Re-configure ESP32 UART to 230400 to match sensor
+  uart_set_baudrate(UART_PORT_NUM, UART_BAUD_RATE);
+  uart_flush(UART_PORT_NUM); // Discard any garbage from the baud transition
+  vTaskDelay(pdMS_TO_TICKS(200));
+  printf("UART now at %d baud\n", UART_BAUD_RATE);
+
   // Send sensor commands
 #ifdef USE_NONLINEAR
   const char *unit_cmd = "AT+UNIT=0\r";
@@ -78,7 +91,7 @@ void depth_sensor_init()
   vTaskDelay(pdMS_TO_TICKS(5000));
 
   printf("Setting FPS\n");
-  const char *fps_cmd = "AT+FPS=20\r";
+  const char *fps_cmd = "AT+FPS=19\r";
   uart_write_bytes(UART_PORT_NUM, fps_cmd, strlen(fps_cmd));
   vTaskDelay(pdMS_TO_TICKS(5000));
 
@@ -354,6 +367,12 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
     vTaskDelay(pdMS_TO_TICKS(1)); // Small delay to avoid hogging CPU
   }
 
+  // Discard any frames that queued up while we were processing the previous one.
+  // This ensures we always work with the freshest data, not stale buffered frames.
+  uart_flush_input(UART_PORT_NUM);
+  packetState = 0;
+  bufferIndex = 0;
+
   if (!readHeader()) // Create the header structure, sync rows and columns
   {
     return; // Drop frame if invalid resolution
@@ -399,7 +418,7 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
 
       // Clear LED queue when switching modes to prevent stale commands
       led_manager_clear();
-      
+
       if (write_to_sd == 0)
       {
         // Switching out of SD write mode - flush and sync one final time
@@ -444,6 +463,7 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
   prev_ch3 = *ch3_ptr; // Update previous value
 
   // Execute based on current mode
+  static int frame_skip_counter = 0;
   if (write_to_sd == 1)
   {
     printDepthAscii(); // Print to serial
@@ -452,28 +472,31 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
   {
     // Skip every other frame to keep up with sensor rate
     // Still logs 10 FPS which is plenty for analysis
-    static int frame_skip_counter = 0;
-    if (frame_skip_counter % 2 == 0)
-    {
-      appendDepthFrame(*steering_ptr, *throttle_ptr); // Write to SD card with control values
-    }
-    frame_skip_counter++;
+    // if (frame_skip_counter % 2 == 0)
+    // {
+    appendDepthFrame(*steering_ptr, *throttle_ptr); // Write to SD card with control values
+    // }
+    // frame_skip_counter++;
 
     // Reset counter to prevent overflow (every 10000 frames = ~8 minutes at 20 FPS)
-    if (frame_skip_counter >= 10000)
-    {
-      frame_skip_counter = 0;
-    }
+    // if (frame_skip_counter >= 10000)
+    // {
+    // frame_skip_counter = 0;
+    // }
   }
   else if (write_to_sd == 3)
   {
-    // Run inference every 3 frames to reduce lag
-    // Inference runs asynchronously on core 1
-    if (inference_frame_counter == 0)
-    {
-      request_inference();
-    }
-    inference_frame_counter = (inference_frame_counter + 1) % 1;
+    // if (frame_skip_counter % 2 == 0)
+    // {
+    add_frame_to_buffer();
+    request_inference();
+    // }
+    // frame_skip_counter++;
+    // if (frame_skip_counter >= 10000)
+    // {
+    //   frame_skip_counter = 0;
+    // }
+    // Add current frame to buffer (rotated and cropped to 24x24)
   }
 
   // Decrement cooldown
