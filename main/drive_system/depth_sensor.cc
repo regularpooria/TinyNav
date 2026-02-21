@@ -3,6 +3,8 @@
 #include "driver/uart.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
+#include "esp_timer.h"
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -35,6 +37,12 @@ FILE *g_depth_log_file = NULL;
 short write_to_sd = 0;
 
 int sd_card_cooldown = 0;
+static int dropped_frames = 0;
+
+// SD async writer queue
+static QueueHandle_t g_sd_queue = NULL;
+static StaticQueue_t g_sd_queue_static;
+static uint8_t g_sd_queue_storage[SD_QUEUE_DEPTH * sizeof(sd_frame_t)];
 
 // -------------------- Initialization --------------------
 void depth_sensor_init()
@@ -102,6 +110,9 @@ void depth_sensor_init()
   vTaskDelay(pdMS_TO_TICKS(5000));
 
   printf("SENSOR READY\n");
+
+  g_sd_queue = xQueueCreateStatic(SD_QUEUE_DEPTH, sizeof(sd_frame_t),
+                                   g_sd_queue_storage, &g_sd_queue_static);
 
   char buffer[256];
   size_t bytes_read = 0;
@@ -171,15 +182,15 @@ void depth_sensor_init()
       return;
     }
 
-    // Set larger buffer size to reduce write frequency
-    // Default is usually 512-1024 bytes, we'll use 8KB
-    static char file_buffer[8192];
+    // Each frame is ~3KB of CSV. 32KB buffers ~10 frames before a physical SD write,
+    // reducing write stalls from every 2-3 frames down to every ~10 frames.
+    static char file_buffer[32768];
     setvbuf(g_depth_log_file, file_buffer, _IOFBF, sizeof(file_buffer));
 
     // Write header
     fprintf(g_depth_log_file, "# Depth Sensor Log\n");
     fprintf(g_depth_log_file, "# Binning Factor: %d\n", BINNING_FACTOR);
-    fprintf(g_depth_log_file, "# Frame,Steering,Throttle,Width,Height,Data...\n");
+    fprintf(g_depth_log_file, "# Frame,Steering(millis),Throttle(millis),Width,Height,Data...\n");
 
     fflush(g_depth_log_file);
     printf("Initial mode: Off (cycle modes with CH3: Off -> Serial -> SD -> Inference -> Off)\n");
@@ -358,14 +369,19 @@ void fullPrint()
 // -------------------- Main Task --------------------
 void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
 {
-  static DepthFrame frame;                // Static to avoid stack overflow
-  static float prev_ch3 = 0.0;            // Track previous CH3 value for edge detection
-  static int inference_frame_counter = 0; // Track frames for inference skipping
+  static float prev_ch3 = 0.0;
+  static int fps_frame_count = 0;
+  static int64_t fps_last_time = 0;
+  static int64_t t_getpacket_us = 0, t_processdepth_us = 0, t_append_us = 0;
 
-  while (!getPacket()) // Keep reading until full packet received
+  int64_t t0;
+
+  t0 = esp_timer_get_time();
+  while (!getPacket())
   {
     vTaskDelay(pdMS_TO_TICKS(1)); // Small delay to avoid hogging CPU
   }
+  t_getpacket_us += esp_timer_get_time() - t0;
 
   // Discard any frames that queued up while we were processing the previous one.
   // This ensures we always work with the freshest data, not stale buffered frames.
@@ -377,7 +393,38 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
   {
     return; // Drop frame if invalid resolution
   }
+
+  t0 = esp_timer_get_time();
   processDepth(); // Convert raw bytes into mm and create 2D array depthMap
+  t_processdepth_us += esp_timer_get_time() - t0;
+
+  // FPS tracking: print every second
+  fps_frame_count++;
+  int64_t now = esp_timer_get_time(); // microseconds
+  if (fps_last_time == 0)
+  {
+    fps_last_time = now;
+  }
+  else if (now - fps_last_time >= 1000000)
+  {
+    if (write_to_sd == 2)
+    {
+      float elapsed_s = (now - fps_last_time) / 1000000.0f;
+      float fps = fps_frame_count / elapsed_s;
+      printf("FPS: %.1f | getPacket: %ldus  processDepth: %ldus  appendFrame: %ldus  dropped: %d\n",
+             fps,
+             (long)(t_getpacket_us / fps_frame_count),
+             (long)(t_processdepth_us / fps_frame_count),
+             (long)(t_append_us / fps_frame_count),
+             dropped_frames);
+    }
+    fps_frame_count = 0;
+    fps_last_time = now;
+    t_getpacket_us = 0;
+    t_processdepth_us = 0;
+    t_append_us = 0;
+    dropped_frames = 0;
+  }
 
   // Mode cycling with CH3 button (edge detection: rising edge when ch3 goes from <0.5 to >=0.5)
   if (*ch3_ptr >= 0.5 && prev_ch3 < 0.5 && sd_card_cooldown == 0)
@@ -421,22 +468,24 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
 
       if (write_to_sd == 0)
       {
-        // Switching out of SD write mode - flush and sync one final time
-        if (prev_mode == 2 && g_depth_log_file != NULL)
+        // Enqueue a sentinel so the writer task flushes cleanly before we stop sending
+        if (prev_mode == 2 && g_sd_queue != NULL)
         {
-          fflush(g_depth_log_file);
-          fsync(fileno(g_depth_log_file));
+          sd_frame_t sentinel = {};
+          sentinel.len = 0;
+          xQueueSend(g_sd_queue, &sentinel, portMAX_DELAY);
         }
         printf("Mode: Off (no output)\n");
         led_manager_set(LED_PRIORITY_HIGH, FX_MODE_STATIC, GREEN, 0, 2000);
       }
       else if (write_to_sd == 1)
       {
-        // Switching out of SD write mode - flush and sync one final time
-        if (prev_mode == 2 && g_depth_log_file != NULL)
+        // Enqueue a sentinel so the writer task flushes cleanly before we stop sending
+        if (prev_mode == 2 && g_sd_queue != NULL)
         {
-          fflush(g_depth_log_file);
-          fsync(fileno(g_depth_log_file));
+          sd_frame_t sentinel = {};
+          sentinel.len = 0;
+          xQueueSend(g_sd_queue, &sentinel, portMAX_DELAY);
         }
         printf("Mode: Serial print\n");
         led_manager_set(LED_PRIORITY_HIGH, FX_MODE_STATIC, BLUE, 0, 2000);
@@ -448,12 +497,15 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
       }
       else if (write_to_sd == 3)
       {
-        // Switching out of SD write mode - flush and sync one final time
-        if (prev_mode == 2 && g_depth_log_file != NULL)
+        // Enqueue a sentinel so the writer task flushes cleanly before we stop sending
+        if (prev_mode == 2 && g_sd_queue != NULL)
         {
-          fflush(g_depth_log_file);
-          fsync(fileno(g_depth_log_file));
+          sd_frame_t sentinel = {};
+          sentinel.len = 0;
+          xQueueSend(g_sd_queue, &sentinel, portMAX_DELAY);
         }
+        // Clear stale frames so inference waits for 10 fresh ones
+        reset_frame_buffer();
         printf("Mode: Inference\n");
         led_manager_set(LED_PRIORITY_HIGH, FX_MODE_BLINK, CYAN, 500, 0); // Blink while running AI
       }
@@ -463,26 +515,15 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
   prev_ch3 = *ch3_ptr; // Update previous value
 
   // Execute based on current mode
-  static int frame_skip_counter = 0;
   if (write_to_sd == 1)
   {
     printDepthAscii(); // Print to serial
   }
   else if (write_to_sd == 2)
   {
-    // Skip every other frame to keep up with sensor rate
-    // Still logs 10 FPS which is plenty for analysis
-    // if (frame_skip_counter % 2 == 0)
-    // {
+    t0 = esp_timer_get_time();
     appendDepthFrame(*steering_ptr, *throttle_ptr); // Write to SD card with control values
-    // }
-    // frame_skip_counter++;
-
-    // Reset counter to prevent overflow (every 10000 frames = ~8 minutes at 20 FPS)
-    // if (frame_skip_counter >= 10000)
-    // {
-    // frame_skip_counter = 0;
-    // }
+    t_append_us += esp_timer_get_time() - t0;
   }
   else if (write_to_sd == 3)
   {
@@ -507,33 +548,69 @@ void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr)
 }
 
 // -------------------- Frame Export --------------------
+// Formats the frame into a CSV line and enqueues it for the writer task.
+// Returns immediately - does NOT block on SD card I/O.
+// Steering/throttle are stored as integer millis (e.g. 1.234 -> 1234) to avoid
+// float formatting, which uses the deep-stack Ryu algorithm and causes stack overflows.
 bool appendDepthFrame(float steering, float throttle)
 {
-  if (g_depth_log_file == NULL)
+  if (g_sd_queue == NULL)
     return false;
 
-  // Write frame header: frame number, steering, throttle, width, height
-  fprintf(g_depth_log_file, "%d,%.3f,%.3f,%d,%d", g_frame_counter++, steering, throttle, imageCols, imageRows);
+  static sd_frame_t item;
+  int steering_i = (int)(steering * 1000);
+  int throttle_i = (int)(throttle * 1000);
+  int pos = snprintf(item.data, sizeof(item.data), "%d,%d,%d,%d,%d",
+                     g_frame_counter++, steering_i, throttle_i, imageCols, imageRows);
 
-  // Write depth data row by row
   for (int i = 0; i < imageRows; i++)
-  {
     for (int j = 0; j < imageCols; j++)
+      pos += snprintf(item.data + pos, sizeof(item.data) - pos, ",%d", (int)depthMap[i][j]);
+
+  item.data[pos++] = '\n';
+  item.len = pos;
+
+  // Non-blocking: drop frame if the writer task has fallen behind
+  if (xQueueSend(g_sd_queue, &item, 0) != pdTRUE)
+  {
+    dropped_frames++;
+    return false;
+  }
+  return true;
+}
+
+// -------------------- SD Writer Task --------------------
+// Runs on its own FreeRTOS task. Drains the queue and writes to the SD card.
+// SD write stalls (erase/wear-levelling) no longer affect the sensor loop.
+// A sentinel item (len == 0) triggers a final fflush + fsync on the file.
+void sd_writer_task(void *pvParameters)
+{
+  static sd_frame_t item;
+  int flush_counter = 0;
+
+  while (true)
+  {
+    if (xQueueReceive(g_sd_queue, &item, portMAX_DELAY) == pdTRUE)
     {
-      // Cast to int - much faster than float formatting
-      fprintf(g_depth_log_file, ",%d", (int)depthMap[i][j]);
+      if (g_depth_log_file == NULL)
+        continue;
+
+      if (item.len == 0)
+      {
+        // Sentinel: drain is done, safe to flush and sync
+        fflush(g_depth_log_file);
+        fsync(fileno(g_depth_log_file));
+        flush_counter = 0;
+      }
+      else
+      {
+        fwrite(item.data, 1, item.len, g_depth_log_file);
+        if (++flush_counter >= 20)
+        {
+          fflush(g_depth_log_file);
+          flush_counter = 0;
+        }
+      }
     }
   }
-
-  // End the line for this frame
-  fprintf(g_depth_log_file, "\n");
-
-  // Only flush every 20 frames to reduce overhead
-  // OS buffers the data in memory until flush
-  if (g_frame_counter % 20 == 0)
-  {
-    fflush(g_depth_log_file);
-  }
-
-  return true;
 }

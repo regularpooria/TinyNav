@@ -8,11 +8,6 @@
     "ESP_ROM_ELF_DIR": "/opt/esp/tools/esp-rom-elfs/20241011/",
     "IDF_TARGET": "esp32p4"
   },
-  "clangd.path": "/home/regularpooria/.espressif/tools/esp-clang/esp-20.1.1_20250829/esp-clang/bin/clangd",
-  "clangd.arguments": [
-    "--background-index",
-    "--query-driver=/home/regularpooria/.espressif/tools/riscv32-esp-elf/esp-15.2.0_20251204/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
-    "--compile-commands-dir=/home/regularpooria/Projects/tinynav/build"
-  ],
+
   "idf.port": "/dev/ttyACM0"
 }

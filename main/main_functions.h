@@ -35,6 +35,7 @@ extern "C"
   void run_inference();
   void request_inference(); // Non-blocking inference request for core 1
   void add_frame_to_buffer(); // Add new frame to circular buffer
+  void reset_frame_buffer(); // Clear buffer so inference waits for 10 fresh frames
   
   // Get current inference results (only valid in inference mode)
   float get_inference_steering();

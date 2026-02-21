@@ -2,9 +2,7 @@
 // https://github.com/microsoft/vscode-dev-containers/tree/v0.183.0/containers/ubuntu
 {
   "name": "ESP-IDF & ESP-ADF environment",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "image": "regularpooria/tinynav-devcontainer:latest",
   "forwardPorts": [
     3232
   ],

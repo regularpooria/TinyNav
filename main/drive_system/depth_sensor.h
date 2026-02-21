@@ -47,6 +47,15 @@ typedef struct
   float data[MAX_IMAGE_SIZE][MAX_IMAGE_SIZE];
 } DepthFrame;
 
+// SD writer queue item: one pre-formatted CSV line
+#define SD_LINE_MAX 3300
+#define SD_QUEUE_DEPTH 30
+typedef struct
+{
+  char data[SD_LINE_MAX];
+  int len;
+} sd_frame_t;
+
 // -------------------- Globals --------------------
 extern int imageRows;
 extern int imageCols;
@@ -60,10 +69,9 @@ extern char g_depth_log_filename[64];
 extern short write_to_sd; // 0=off, 1=serial, 2=SD, 3=inference
 
 // -------------------- API --------------------
-// void depth_sensor_task(void *pvParameters);
-
 void depth_sensor_task(float *steering_ptr, float *throttle_ptr, float *ch3_ptr);
 void depth_sensor_init();
+void sd_writer_task(void *pvParameters);
 
 bool getPacket();
 bool readHeader();

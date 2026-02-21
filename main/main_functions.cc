@@ -78,7 +78,7 @@ namespace
   volatile bool inference_requested = false;
 
   // Frame buffer: store last 10 frames for inference (24x24 each)
-  constexpr int NUM_FRAMES = 10;
+  constexpr int NUM_FRAMES = 20;
   constexpr int FRAME_SIZE = 24 * 24;
   float *frame_buffer = nullptr;     // Buffer for 10 frames: [10][24][24]
   float *inference_buffer = nullptr; // Snapshot for inference computation
@@ -174,6 +174,21 @@ void add_frame_to_buffer()
   }
 }
 
+void reset_frame_buffer()
+{
+  if (frame_buffer == nullptr || depth_mutex == nullptr)
+    return;
+
+  if (xSemaphoreTake(depth_mutex, pdMS_TO_TICKS(50)) == pdTRUE)
+  {
+    memset(frame_buffer, 0, NUM_FRAMES * FRAME_SIZE * sizeof(float));
+    frame_count = 0;
+    buffer_index = 0;
+    inference_requested = false;
+    xSemaphoreGive(depth_mutex);
+  }
+}
+
 // The name of this function is important for Arduino compatibility.
 void setup()
 {
@@ -192,6 +207,7 @@ void setup()
   }
 
   depth_sensor_init();
+  xTaskCreatePinnedToCore(sd_writer_task, "sd_writer", 4096, NULL, 5, NULL, 1);
   drive_system_setup();
   setup_leds();
   serial_commands_init();
@@ -235,27 +251,51 @@ void setup()
     return;
   }
 
-  // Pull in only the operation implementations we need.
-  // Model uses: Conv2D, DepthwiseConv2D, ReLU6, GlobalAveragePooling2D (Mean), FullyConnected, Tanh
-  static tflite::MicroMutableOpResolver<18> resolver;
+  static tflite::MicroMutableOpResolver<21> resolver;
+
   resolver.AddConv2D();
   resolver.AddDepthwiseConv2D();
-  resolver.AddMean(); // GlobalAveragePooling2D becomes Mean
-  resolver.AddFullyConnected();
-  resolver.AddRelu6();
-  resolver.AddTanh();
-  resolver.AddLogistic();
-  resolver.AddMul();
-  resolver.AddConcatenation();
-  resolver.AddMaxPool2D();
-  resolver.AddAdd();
-  resolver.AddSpaceToBatchNd();
-  resolver.AddBatchToSpaceNd();
-  resolver.AddReduceMax();
-  resolver.AddReshape();
   resolver.AddShape();
   resolver.AddStridedSlice();
   resolver.AddPack();
+  resolver.AddReshape();
+  resolver.AddAdd();
+  resolver.AddFullyConnected();
+  resolver.AddTranspose();
+  resolver.AddBatchMatMul();
+  resolver.AddMul();
+  resolver.AddSoftmax();
+  resolver.AddMean();
+  resolver.AddDequantize();
+  resolver.AddNeg();
+  resolver.AddQuantize();
+  resolver.AddSquaredDifference();
+  resolver.AddRsqrt();
+  resolver.AddTanh();
+  resolver.AddLogistic();
+  resolver.AddConcatenation();
+
+  // Pull in only the operation implementations we need.
+  // Model uses: Conv2D, DepthwiseConv2D, ReLU6, GlobalAveragePooling2D (Mean), FullyConnected, Tanh
+  // static tflite::MicroMutableOpResolver<18> resolver;
+  // resolver.AddConv2D();
+  // resolver.AddDepthwiseConv2D();
+  // resolver.AddMean(); // GlobalAveragePooling2D becomes Mean
+  // resolver.AddFullyConnected();
+  // resolver.AddRelu6();
+  // resolver.AddTanh();
+  // resolver.AddLogistic();
+  // resolver.AddMul();
+  // resolver.AddConcatenation();
+  // resolver.AddMaxPool2D();
+  // resolver.AddAdd();
+  // resolver.AddSpaceToBatchNd();
+  // resolver.AddBatchToSpaceNd();
+  // resolver.AddReduceMax();
+  // resolver.AddReshape();
+  // resolver.AddShape();
+  // resolver.AddStridedSlice();
+  // resolver.AddPack();
 
   // static tflite::MicroMutableOpResolver<8> resolver;
   // resolver.AddConv2D();
