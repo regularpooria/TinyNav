@@ -34,7 +34,9 @@
         "masuidrive.vsc-esp-updater",
         "espressif.esp-idf-extension",
         "mutantdino.resourcemonitor",
-        "espressif.esp-idf-web"
+        "espressif.esp-idf-web",
+        "github.copilot-chat",
+        "ritwickdey.liveserver"
       ]
     }
   },
