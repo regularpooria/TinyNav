@@ -70,11 +70,3 @@ We used multiple methods to validate performance and gain insight into the netwo
 - ![Grad-CAM activations](images_videos/gradcam_cnn_activations.jpg.jpg)
 
 These plots demonstrate the model's tendency to attend to track boundaries and opening corners, and a reasonable correlation to human-driven ground truth.
-
----
-
-## System diagrams
-
-- Pipeline and TinyML integration: images_videos/tinynav_pipeline_tinyml_hero.jpg
-
----
