@@ -8,7 +8,7 @@ TinyNav is an end-to-end TinyML system that runs on an ESP32 microcontroller to 
 
 - Pooria Roy — Queen's University (pooria.roy@queensu.ca)
 - Nourhan Jadallah — Queen's University (23jpv1@queensu.ca)
-- Tomer Lapid — Queen's University (email@email.com)
+- Tomer Lapid — Queen's University (23rtn2@queensu.ca)
 - Shahzaib Ahmad — Queen's University (shahzaib.ahmad@queensu.ca)
 - Armita Afroushe — Queen's University (24kb11@queensu.ca)
 - Mete Bayrak — Queen's University (mete.bayrak@queensu.ca)
