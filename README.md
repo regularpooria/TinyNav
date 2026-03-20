@@ -21,6 +21,14 @@ TinyNav is an end-to-end TinyML system that runs on an ESP32 microcontroller to 
 
 ---
 
+## Publication
+
+**Paper:** [TinyNav: End-to-End TinyML for Real-Time Autonomous Navigation on Microcontrollers](https://arxiv.org/abs/2603.11071)
+
+Presented at the Canadian Undergraduate Conference on AI (CUCAI) 2026.
+
+---
+
 ## System diagrams
 
 - Pipeline and TinyML integration:
