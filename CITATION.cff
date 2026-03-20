@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: Roy
+    given-names: Pooria
+    email: pooria.roy@queensu.ca
+  - family-names: Jadallah
+    given-names: Nourhan
+  - family-names: Lapid
+    given-names: Tomer
+  - family-names: Ahmad
+    given-names: Shahzaib
+  - family-names: Afroushe
+    given-names: Armita
+  - family-names: Bayrak
+    given-names: Mete
+    email: mete.bayrak@queensu.ca
+title: "TinyNav: End-to-End TinyML for Real-Time Autonomous Navigation on Microcontrollers"
+version: 1.0.0
+date-released: 2026-03-01
+url: "https://github.com/regularpooria/tinynav"
+preferred-citation:
+  type: conference-paper
+  authors:
+    - family-names: Roy
+      given-names: Pooria
+    - family-names: Jadallah
+      given-names: Nourhan
+    - family-names: Lapid
+      given-names: Tomer
+    - family-names: Ahmad
+      given-names: Shahzaib
+    - family-names: Afroushe
+      given-names: Armita
+    - family-names: Bayrak
+      given-names: Mete
+  title: "TinyNav: End-to-End TinyML for Real-Time Autonomous Navigation on Microcontrollers"
+  year: 2026
+  event-name: "Canadian Undergraduate Conference on AI (CUCAI)"
+  version: 1.0.0
+  url: "https://arxiv.org/abs/2603.11071"
